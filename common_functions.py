@@ -322,7 +322,7 @@ def HMDur(tm, Y, baseIndex):
     calculates half max duration from end of stimulation of a voltage trace.
     -The trace can only have one epsp, i.e. it is assumed that the curve is monotonic
     before and after the maximum.
-    -The end of the voltage stimulation is assumed to be after 140 ms (100 delay + 20x2 ms ISI)
+    -The end of the voltage stimulation is assumed to be after 120 ms (100 delay + 20x1 ms ISI)
     '''
     
     # get half-max vm
@@ -335,7 +335,45 @@ def HMDur(tm, Y, baseIndex):
         if y - half_max >= 0:
             indx.append(i)
             
-    return tm[indx[-1]] - 140
+    return tm[indx[-1]] - 120
+
+
+
+
+def dpp_dur(tm, vm, base_vm):
+    '''
+    calculates the duration of the plateau potential based on the time at which
+    the voltage is half that at the peak
+    - vm (voltage values) should only have a single peak (the peak of the 
+      plateau potential)
+    '''
+    
+    # find max and half-max volatge
+    max_id = vm.index(max(vm))
+    hm_vm = (vm[max_id] + base_vm) / 2
+    
+    # find where half-max voltage occurs (or where this point is crossed)
+    for i in range(len(vm)):
+        if i > max_id:
+            half = i
+            if vm[i] < hm_vm:
+                break
+            
+    return tm[half] - tm[max_id]
+
+
+
+    
+        
+def save_data(data, path):
+    json.dump(data, open(path,'w'))
+    
+def load_data(path):
+    data = json.load(open(path))
+    return data
+    
+
+
 
 
 
@@ -1078,12 +1116,54 @@ def set_clustered_stimuli(  cell,               \
             # create NetCon object
             ncon             = h.NetCon(stim, syn)
             ncon.delay       = 0
-            ncon.weight[0]   = (h.synaptic_strength/1000.0)*1e-3 # (uS). default 1.5 nS
+            ncon.weight[0]   = 1.5/1000.0 # (h.synaptic_strength/1000.0)*1e-3 # (uS). default 1.5 nS
             
             break 
     
     return syn, stim, ncon, d2soma
     
+
+def set_clustered_stim(     cell,               \
+                            section,            \
+                            n=20,               \
+                            act_time=1000,      \
+                            syn_fact=False,     \
+                            delta=0,            \
+                            ISI=1,              \
+                            x=0.5               ):
+    
+    for sec in cell.allseclist:
+                                                    
+        if sec.name() == section:
+            
+            # calc distance to soma
+            # d2soma = int(h.distance(x, sec=sec)) # calculates distance from location 0 of soma section
+            d2soma = int(h.distance(cell.soma(x),sec(x))) # calculates distance from location x of soma section
+            
+            # define synapse
+            syn         = h.glutamate(x, sec=sec)
+            syn.ratio   = 1.0/3.0
+            
+            if syn_fact:
+                syn.ampa_scale_factor = syn_fact[0]
+                syn.nmda_scale_factor = syn_fact[1]
+
+
+            # create NetStim object
+            stim            = h.NetStim()
+            stim.number     = n
+            stim.start      = act_time+delta
+            stim.interval   = ISI # mean interval between two spikes in ms (default 1 ms)
+            
+
+            # create NetCon object
+            ncon             = h.NetCon(stim, syn)
+            ncon.delay       = 0
+            ncon.weight[0]   = 1.5/1000.0 # (h.synaptic_strength/1000.0)*1e-3 # (uS). default 1.5 nS
+            
+            break 
+    
+    return syn, stim, ncon, d2soma
 
 
 def set_single_E_stim(  section,            \
