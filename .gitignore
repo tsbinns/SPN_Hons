@@ -3,3 +3,4 @@
 mechanisms/
 Val_spines
 temp_data/
+__pycache__/
