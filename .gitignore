@@ -1,5 +1,5 @@
 *x86_64*
 ./mechanisms/*/*special
-mechanisms
+mechanisms/
 Val_spines
-temp_data
+temp_data/
