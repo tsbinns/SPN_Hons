@@ -5,7 +5,7 @@ common functions for MSN model
 
 from    neuron  import          h
 import  numpy                as np
-
+import os, shutil
 import pickle
 import json, codecs
 
@@ -340,29 +340,41 @@ def HMDur(tm, Y, baseIndex):
 
 
 
-def dpp_dur(tm, vm, base_vm):
+def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
     '''
-    calculates the duration of the plateau potential based on the time at which
-    the voltage is half that at the peak
-    - vm (voltage values) should only have a single peak (the peak of the 
-      plateau potential)
+    calculates full width half max of a voltage trace.
+    The trace can only have one epsp, i.e. it is assumed that the curve is monotonic
+    before and after the maximum.
     '''
     
-    # find max and half-max volatge
-    max_id = vm.index(max(vm))
-    hm_vm = (vm[max_id] + base_vm) / 2
+    if exclude_at_start:
+        # excludes time at start of simulations
+        exclude_idx = tm.index(min(tm, key=lambda x:abs(x-exclude_at_start))) - 1
+        tm = tm[exclude_idx:]
+        vm = vm[exclude_idx:]
     
-    # find where half-max voltage occurs (or where this point is crossed)
-    for i in range(len(vm)):
-        if i > max_id:
-            half = i
-            if vm[i] < hm_vm:
-                break
+    # get half-max vm
+    half_max = (max(vm)+base_vm) / 2
+
+    indx = []
+    for i, v in enumerate(vm):
+        # get all values above half max (assumes monotonic epsp in trace)
+        if v - half_max >= 0:
+            indx.append(i)
             
-    return tm[half] - tm[max_id]
+    return tm[indx[-1]] - tm[indx[0]]
 
 
 
+def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
+    
+    if exclude_at_start:
+        # excludes time at start of simulations
+        exclude_idx = tm.index(min(tm, key=lambda x:abs(x-exclude_at_start))) - 1
+        vm = vm[exclude_idx:]
+    
+    # get max Vm
+    return max(vm) - base_vm
     
         
 def save_data(data, path):
@@ -1639,6 +1651,22 @@ def make_shape( diameter_style=0,   \
             s.point_mark(2, "O", 10, sec=point)
     s.exec_menu("Shape Plot")
     return s
+
+
+
+
+def clear_folder(folder):
+    print('Clearing files from folder {}'.format(folder))
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+
 
         
 # ===== USEFULL CODE FROM OTHER SCRIPTS ==================================================  
