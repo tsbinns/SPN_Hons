@@ -1,6 +1,0 @@
-*x86_64*
-./mechanisms/*/*special
-mechanisms/
-Val_spines
-temp_data/
-__pycache__/
