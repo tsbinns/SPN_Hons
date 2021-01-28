@@ -1,5 +1,5 @@
 '''
-common functions for MSN model
+common functions for SPN simulations
 '''
 
 
@@ -342,9 +342,21 @@ def HMDur(tm, Y, baseIndex):
 
 def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
     '''
-    calculates full width half max of a voltage trace.
-    The trace can only have one epsp, i.e. it is assumed that the curve is monotonic
-    before and after the maximum.
+    Calculates the full width half max of a voltage trace (length of time that
+    the voltage is above half of the maximum voltage). The trace can only have 
+    one epsp, i.e. it is assumed that the curve is monotonic before and after 
+    the maximum.
+    
+    INPUT(S):
+        - tm: simulation time          - vm: voltage values
+        - base_vm: baseline voltage    
+        - exclude_at_start: values (in ms) at the start of the simulations that
+            will be ignored
+        
+    OUTPUT(S):
+        - length of time that the voltage is above half of the maximum voltage
+    
+    Thomas Binns (author), 28/01/21
     '''
     
     if exclude_at_start:
@@ -367,6 +379,22 @@ def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
 
 
 def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
+    '''
+    Calculates the maximum amplitude of a voltage trace. The trace should only 
+    have one epsp.
+    
+    INPUT(S):
+        - tm: simulation time          - vm: voltage values
+        - base_vm: baseline voltage    
+        - exclude_at_start: values (in ms) at the start of the simulations that
+            will be ignored
+        
+    OUTPUT(S):
+        - maximum amplitude of the voltage trace
+    
+    Thomas Binns (author), 27/01/21
+    '''
+    
     
     if exclude_at_start:
         # excludes time at start of simulations
@@ -376,11 +404,41 @@ def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
     # get max Vm
     return max(vm) - base_vm
     
+
+
         
 def save_data(data, path):
+    '''
+    Saves data in the specified path
+    
+    INPUT(S):
+        - data: data to save         
+        - path: directory to save (including filename and type)
+        
+    OUTPUT(S):
+        None
+    
+    Thomas Binns (author), 27/01/21
+    '''
+    
     json.dump(data, open(path,'w'))
     
+    
+    
+    
 def load_data(path):
+    '''
+    Loads data from the specified path
+    
+    INPUT(S):
+        - path: directory to load (including filename and type)
+        
+    OUTPUT(S):
+        - data: data that has been loaded
+    
+    Thomas Binns (author), 28/01/21
+    '''
+    
     data = json.load(open(path))
     return data
     
@@ -1143,10 +1201,26 @@ def set_clustered_stim(     cell,               \
                             delta=0,            \
                             ISI=1,              \
                             x=0.5               ):
+    '''
+    Applies glutamatergic input to the same region of the cell.
     
-    for sec in cell.allseclist:
+    INPUT(S):
+        - cell: cell model          - section: region of cell to stimulate
+        - n: number of inputs       - act_time: time of stimulation
+        - syn_fact: ?               - delta: ?
+        - ISI: inter-spike interval between inputs
+        - x: position of section to stimulate
+     
+     OUTPUT(S):
+         - syn: synapse object       - stim: NetStim object
+         - ncon: NetCon object       - d2soma: distance from section to soma
+         
+    Thomas Binns (modified), 25/01/21
+    '''
+    
+    for sec in cell.allseclist: # for all sections in the cell
                                                     
-        if sec.name() == section:
+        if sec.name() == section: # if section to stimulate
             
             # calc distance to soma
             # d2soma = int(h.distance(x, sec=sec)) # calculates distance from location 0 of soma section
@@ -1172,6 +1246,7 @@ def set_clustered_stim(     cell,               \
             ncon             = h.NetCon(stim, syn)
             ncon.delay       = 0
             ncon.weight[0]   = 1.5/1000.0 # (h.synaptic_strength/1000.0)*1e-3 # (uS). default 1.5 nS
+            # N.B. h.synaptic_strength does not exist, so using default of 1.5 nS
             
             break 
     
@@ -1654,18 +1729,49 @@ def make_shape( diameter_style=0,   \
 
 
 
+# ===== OTHER =================
 
-def clear_folder(folder):
-    print('Clearing files from folder {}'.format(folder))
+
+def clear_folder(folder, extension=None):
+    '''
+    Deletes all files from the specified folder.
+    
+    INPUT(S):
+        - folder: folder to delete files from 
+        - extension: type of files to delete (e.g. .json)
+    
+    OUTPUT(S):
+        None
+        
+    Thomas Binns (author), 28/01/21
+    '''
+    
+    if extension:
+        print('Clearing {} files from folder: {}'.format(extension, folder))
+    else:
+        print('Clearing all files from folder: {}'.format(folder))
+        
     for filename in os.listdir(folder):
-        file_path = os.path.join(folder, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+        if extension: # if file type to delete
+            if filename.endswith(extension):
+                file_path = os.path.join(folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+        else: # if deleting all file types
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
+                
 
 
         

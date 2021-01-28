@@ -1,5 +1,6 @@
 *x86_64*
 ./mechanisms/*/*special
 Val_spines
-temp_data/
 __pycache__/
+
+*.json
