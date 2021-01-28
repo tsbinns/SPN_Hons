@@ -1,4 +1,4 @@
-# striatal_SPN_lib
+# striatal_SPN_lib (personalised)
 
 This repository contains a library of striatal projection neurons.
 
