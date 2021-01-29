@@ -5,9 +5,9 @@ common functions for SPN simulations
 
 from    neuron  import          h
 import  numpy                as np
-import os, shutil
-import pickle
-import json, codecs
+import  os, shutil
+import  pickle
+import  json, codecs
 
 
 
@@ -1729,6 +1729,8 @@ def make_shape( diameter_style=0,   \
 
 
 
+
+
 # ===== OTHER =================
 
 
@@ -1772,6 +1774,60 @@ def clear_folder(folder, extension=None):
             except Exception as e:
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
                 
+                
+
+
+def params_for_input(cell_type, input_type):
+    '''
+    Provides information about cell inputs for the specific type of cell and 
+    simulation
+    
+    INPUT(S):
+        - cell_type: type of cell to simulate
+        - input_type: type of input to simulate
+    
+    OUTPUT(S):
+        - info: information on input targets with labels
+    
+    Thomas Binns (author), 29/01/21
+    '''
+    
+    info = {}
+    info['clustered'] = {}
+    info['clustered']['label'] = ['proximal dend','distal dend']
+    
+    if cell_type == 'dspn':
+        info['clustered']['target'] = ['dend[49]','dend[51]']
+        
+        if input_type == 'clustered+stim':
+            # info['stim'] = {}
+            raise ValueError('The specified input_type is not yet supported')
+            
+        if input_type == 'clustered+Ach':
+            # info['Ach'] = {}
+            raise ValueError('The specified input_type is not yet supported')
+        
+        
+    elif cell_type == 'ispn':
+        info['clustered']['target'] = ['dend[12]','dend[17]']
+        
+        if input_type == 'clustered+stim':
+            # info['stim'] = []
+            raise ValueError('The specified input_type is not yet supported')
+            
+        if input_type == 'clustered+Ach':
+            # info['Ach'] = []
+            raise ValueError('The specified input_type is not yet supported')
+            
+            
+    else:
+        raise ValueError('The specified cell_type is unsupported')
+        
+        
+    return info
+        
+    
+            
 
 
         

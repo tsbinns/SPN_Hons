@@ -1,6 +1,8 @@
 '''
 Basic simulation of the dendritic plateau potential without any modulation.
     - Run from command line with e.g. mpiexec -n 4 python dpp_validation.py
+    
+Thomas Binns (author), 27/01/21
 '''
 
 
@@ -49,13 +51,9 @@ if pc.id() == 0:
 
 
 # stimulation details
-if cell_type == 'dspn':
-    target = ['dend[49]','dend[51]'] # proximal and distal dendrite
-elif cell_type == 'ispn':
-    target = ['dend[12]','dend[17]'] # proximal and distal dendrite
-else:
-    raise ValueError('The specified cell_type is unsupported')
-target_labels = ['proximal','distal']
+stim_info = cf.params_for_input(cell_type, 'clustered')
+target = stim_info['clustered']['target']
+target_labels = stim_info['clustered']['label']
 
 # open library (channel distributions etc)   
 with open(specs[cell_type]['lib'], 'rb') as f:

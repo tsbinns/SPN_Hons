@@ -1,5 +1,7 @@
 '''
 Functions for running simulations; useful for 'bulletin board' parallelisation
+
+Thomas Binns (author), 28/01/21
 '''
 
 
@@ -42,7 +44,7 @@ def dpp_validation(model_data, stim_data, cell_index, sim_info):
         # initiate cell
         cell = build.MSN(params=model_data['specs'][model_data['cell_type']]['par'],
                          morphology=model_data['specs'][model_data['cell_type']]['morph'],
-                         variables=model_data['model_sets'][cell_index]['variables']   )
+                         variables=model_data['model_sets'][cell_index]['variables'])
         rheobase = model_data['model_sets'][cell_index]['rheobase']
         
         # record vectors
