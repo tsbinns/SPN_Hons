@@ -16,9 +16,13 @@ import time
 
 
 
+
+
+
 # for parallelisation
 h.nrnmpi_init()
 pc = h.ParallelContext()
+
 
 # Load model mechanisms
 import neuron               as nrn
@@ -42,12 +46,18 @@ specs = {'dspn': {
         
 
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
-cell_type         = 'ispn'    # 'dspn'/'ispn'
-model_iterator    = list(range(5))  # range(specs[cell_type]['N']) gives all models
+
+cell_type = 'dspn'
+if cell_type != 'dspn' and cell_type != 'ispn':
+    raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
+    
+model_iterator = list(range(4)) # use model_iterator = range(specs[cell_type]['N']) for all models
 # for dspn, 10 has lowest rheo, 54 has highest, 22 has mean, 41 has median; 22 is also average for experimental value
 # for ispn, 8 has mean and median; 1 is average for experimental value
+
 if pc.id() == 0:
-    print('Simulating {} cell(s) of type: {}'.format(len(model_iterator),cell_type))
+    print('Simulating {} cell iteration(s) of type: {}'.format(len(model_iterator),cell_type), \
+          flush=True)
 
 
 # stimulation details
@@ -58,8 +68,7 @@ target_labels = stim_info['clustered']['label']
 # open library (channel distributions etc)   
 with open(specs[cell_type]['lib'], 'rb') as f:
     model_sets = pickle.load(f, encoding="latin1")
-
-
+    
 
 # simulate model(s) ======================
     
@@ -84,8 +93,9 @@ if pc.nhost() == 1: # use the serial form
     
     for cell_n, cell_index in enumerate(model_iterator): # for each model
         # simulate model
-        print('Simulating cell specification {} of {}'.format(cell_n+1,len(model_iterator)))
-        OUT[cell_index] = sf.dpp_validation(model_data, stim_data, cell_index)
+        sim_info = {'curr_n':cell_n, 'tot_n':len(model_iterator)}
+        OUT[cell_index] = sf.dpp_validation(model_data, stim_data, \
+                          cell_index, sim_info)
             
 else: # use the bulleting board form
     
@@ -113,7 +123,7 @@ pc.done() # end parallelisation
 
 # for timing simulations
 end = time.time()
-print('Simulations completed (took %.0f secs), now performing calculations...' % (end-start))
+print('Simulations completed (took %.0f secs).\nNow performing calculations/collating data...' % (end-start))
 
 
 

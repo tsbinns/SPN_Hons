@@ -13,6 +13,32 @@ import  json, codecs
 
 
 
+def exclude_at_start(tm, vm, time):
+    '''
+    Removes values from time stamps and voltage traces at the start of 
+    simulations. Useful for ignoring data before the voltage has baseline 
+    plateaued.
+    
+    INPUT(S):
+        - tm: simulation time stamps
+        - vm: voltage values
+        - time: time (in ms) at start to exclude
+        
+    OUTPUT(S):
+        - vm: time values with designated entries excluded
+        - vm: voltage values with designated entries excluded
+        
+    Thomas Binns (author), 29/01/21
+    '''
+    
+    exclude_idx = tm.index(min(tm, key=lambda x:abs(x-time))) - 1
+    
+    return tm[exclude_idx:], vm[exclude_idx:]
+
+
+
+
+
 
 def alpha(ht, tstart, gmax=1, tau=500):
     ''' 
@@ -340,7 +366,7 @@ def HMDur(tm, Y, baseIndex):
 
 
 
-def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
+def dpp_dur(tm, vm, base_vm, exclude=None):
     '''
     Calculates the full width half max of a voltage trace (length of time that
     the voltage is above half of the maximum voltage). The trace can only have 
@@ -350,7 +376,7 @@ def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
     INPUT(S):
         - tm: simulation time          - vm: voltage values
         - base_vm: baseline voltage    
-        - exclude_at_start: values (in ms) at the start of the simulations that
+        - exclude: values (in ms) at the start of the simulations that
             will be ignored
         
     OUTPUT(S):
@@ -359,11 +385,9 @@ def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
     Thomas Binns (author), 28/01/21
     '''
     
-    if exclude_at_start:
+    if exclude:
         # excludes time at start of simulations
-        exclude_idx = tm.index(min(tm, key=lambda x:abs(x-exclude_at_start))) - 1
-        tm = tm[exclude_idx:]
-        vm = vm[exclude_idx:]
+        tm, vm = exclude_at_start(tm, vm, exclude)
     
     # get half-max vm
     half_max = (max(vm)+base_vm) / 2
@@ -378,7 +402,7 @@ def dpp_dur(tm, vm, base_vm, exclude_at_start=None):
 
 
 
-def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
+def dpp_amp(tm, vm, base_vm, exclude=None):
     '''
     Calculates the maximum amplitude of a voltage trace. The trace should only 
     have one epsp.
@@ -386,7 +410,7 @@ def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
     INPUT(S):
         - tm: simulation time          - vm: voltage values
         - base_vm: baseline voltage    
-        - exclude_at_start: values (in ms) at the start of the simulations that
+        - exclude: values (in ms) at the start of the simulations that
             will be ignored
         
     OUTPUT(S):
@@ -396,14 +420,15 @@ def dpp_amp(tm, vm, base_vm, exclude_at_start=None):
     '''
     
     
-    if exclude_at_start:
+    if exclude:
         # excludes time at start of simulations
-        exclude_idx = tm.index(min(tm, key=lambda x:abs(x-exclude_at_start))) - 1
-        vm = vm[exclude_idx:]
+        tm, vm = exclude_at_start(tm,vm,exclude)
     
     # get max Vm
     return max(vm) - base_vm
     
+
+
 
 
         
@@ -440,6 +465,7 @@ def load_data(path):
     '''
     
     data = json.load(open(path))
+    
     return data
     
 
@@ -1749,9 +1775,10 @@ def clear_folder(folder, extension=None):
     '''
     
     if extension:
-        print('Clearing {} files from folder: {}'.format(extension, folder))
+        print('Clearing {} files from folder: {}'.format(extension, folder), \
+              flush=True)
     else:
-        print('Clearing all files from folder: {}'.format(folder))
+        print('Clearing all files from folder: {}'.format(folder), flush=True)
         
     for filename in os.listdir(folder):
         if extension: # if file type to delete
@@ -1792,36 +1819,49 @@ def params_for_input(cell_type, input_type):
     Thomas Binns (author), 29/01/21
     '''
     
+    if input_type != 'clustered' and input_type != 'stim' and input_type != 'ACh':
+        raise ValueError("The specified input_type is not recognised.\nThis should be 'clustered', 'stim', or 'ACh'.")
+    
     info = {}
+    
+    # clustered stimulation info; relevant for all simulations
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':100, 'isi':1, \
+                                   'pre_t':-50}
+    info['clustered']['params']['stop_t'] = info['clustered']['params']['stim_t'] \
+                                            + 250
     
     if cell_type == 'dspn':
         info['clustered']['target'] = ['dend[49]','dend[51]']
         
-        if input_type == 'clustered+stim':
+        if input_type == 'stim':
             # info['stim'] = {}
             raise ValueError('The specified input_type is not yet supported')
             
-        if input_type == 'clustered+Ach':
-            # info['Ach'] = {}
-            raise ValueError('The specified input_type is not yet supported')
+        if input_type == 'ACh': # cholinergic input info
+            info['ACh'] = {}
+            info['ACh']['target'] = ['dend[49]','dend[51]','dend[48]','soma[0]']
+            info['ACh']['label'] = ['on-site proximal','on-site distal', \
+                                    'off-site','soma']
         
         
     elif cell_type == 'ispn':
         info['clustered']['target'] = ['dend[12]','dend[17]']
         
-        if input_type == 'clustered+stim':
+        if input_type == 'stim':
             # info['stim'] = []
             raise ValueError('The specified input_type is not yet supported')
             
-        if input_type == 'clustered+Ach':
-            # info['Ach'] = []
-            raise ValueError('The specified input_type is not yet supported')
+        if input_type == 'ACh': # cholinergic input info
+            info['ACh'] = {}
+            info['ACh']['target'] = ['dend[12]','dend[17]','dend[8]','soma[0]']
+            info['ACh']['label'] = ['on-site proximal','on-site distal', \
+                                    'off-site','soma']
             
             
     else:
-        raise ValueError('The specified cell_type is unsupported')
+        raise ValueError("The specified cell_type is not recognised.\nThis should be 'dspn' or 'ispn'.")
         
         
     return info
@@ -1830,8 +1870,63 @@ def params_for_input(cell_type, input_type):
             
 
 
+def get_dist(cell, \
+             other_origin = None, \
+             origin_x = .5, \
+             sec_type = ['soma','dend','axon'], \
+             sec_x = .5):
+    '''
+    Gets the distance from the cell sections to the desired origin (in 
+    micrometers).
+    
+    INPUT(S):
+        - cell: cell model to analyse
+        - other_origin: cell section to take distance to. If None, soma[0] is 
+                        taken as the origin. To specify and alternative origin,
+                        pass a cell section (e.g. cell.dend[0])
+        - origin_x: part of the origin section to take distance to; middle of 
+                    the section by default
+        - sec_type: list of the type(s) of section(s) to get the distance for;
+                    all section types by default
+        - origin_x: part of the section to take distance from; middle of the 
+                    section by default
+                    
+    OUTPUT(S):
+        - dists: dictionary for each requested section type containing a list 
+                 of distances to the origin
+    
+    Thomas Binns (author), 29/01/21
+    '''
+    
+    # checks that correct sec_types given
+    for types in sec_type:
+        if types != 'soma' and types != 'dend' and types != 'axon':
+            raise ValueError("The specified sec_type is not recognised.\nThis should be a list containing 'soma' and/or 'dend' and/or 'axon'.")
+    
+    # sets the origin
+    if other_origin:
+        origin = other_origin
+    else:
+        origin = cell.soma
+    
+    dists = {}
         
-# ===== USEFULL CODE FROM OTHER SCRIPTS ==================================================  
+    # gets the distances to the origin
+    for types in sec_type:
+        dists[types] = []
+        for sec in cell.allseclist:
+            if sec.name()[:4] == types:
+                print(types, sec)
+                dists[types].append(int(h.distance(origin(origin_x),sec(sec_x))))
+        
+    return dists
+
+
+
+
+
+        
+# ===== USEFUL CODE FROM OTHER SCRIPTS ==================================================  
 
 
 # how to fit function to data

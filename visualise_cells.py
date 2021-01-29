@@ -1,6 +1,7 @@
 '''
 Shows cell morphology, with regions of input highlighted
-    - So far only visualisation of clustered inputs implemented
+    - So far only visualisation of clustered inputs and cholinergic inputs
+      implemented
     
 Thomas Binns (author), 29/01/21
 '''
@@ -21,14 +22,14 @@ from   matplotlib.colors import LinearSegmentedColormap as lsc
 # what to visualise =============
 
 cell_type = input("What cell type should be visualised: dspn; or ispn?")
-input_type = input("What input should be visualised: clustered; clustered+stim; or clustered+Ach?")
+input_type = input("What input should be visualised: 'clustered'; 'stim'; or 'ACh'?")
 
 vis_info = cf.params_for_input(cell_type,input_type)
 
 
 # sets up cell =============
 
-nrn.load_mechanisms('mechanisms/single')
+#nrn.load_mechanisms('mechanisms/single')
 h.load_file('stdlib.hoc')
 h.load_file('import3d.hoc')
 
@@ -55,38 +56,46 @@ cell = build.MSN(params=specs[cell_type]['par'],
 
 
 # changes voltage in targets (above baseline -65 mV) to highlight regions
+soma_col = 'black' # don't highlight soma
 
 # increases voltage of clustered inputs a large amount to highlight these 
 # regions in red
-for i, tar in enumerate(vis_info['clustered']['target']):
-    if tar[:4] == 'dend':
-        h.dend[int(tar[5:-1])](.5).v = 35
-    else:
-        raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' currently supported".format(tar[:4]))
+if input_type == 'clustered':
+    vis_cmap = lsc.from_list('my_cmap',['black','red'])
+    for i, tar in enumerate(vis_info['clustered']['target']):
+        if tar[:4] == 'dend':
+            h.dend[int(tar[5:-1])](.5).v = 35
+        elif tar[:4] == 'soma':
+            soma_col = 'red' # highlight soma if targeted by input
+        else:
+            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
 
 # increases voltage of stimulation inputs an intermediate amount to highlight 
 # these regions in green
-if input_type == 'clustered+stim':
+if input_type == 'stim':
+    vis_cmap = lsc.from_list('my_cmap',['black','green'])
     for i, tar in enumerate(vis_info['stim']['target']):
         if tar[:4] == 'dend':
-            h.dend[int(tar[5:-1])](.5).v = -2.5
+            h.dend[int(tar[5:-1])](.5).v = 35
+        elif tar[:4] == 'soma':
+            soma_col = 'green'
         else:
-            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' currently supported".format(tar[:4]))
+            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
 
 # increases voltage of stimulation inputs a small amount to highlight  these 
-# regions in blue
-if input_type == 'clustered+Ach':
-    for i, tar in enumerate(vis_info['Ach']['target']):
+# regions in cyan
+if input_type == 'ACh':
+    vis_cmap = lsc.from_list('my_cmap',['black','cyan'])
+    for i, tar in enumerate(vis_info['ACh']['target']):
         if tar[:4] == 'dend':
-            h.dend[int(tar[5:-1])](.5).v = -27.5
+            h.dend[int(tar[5:-1])](.5).v = 35
+        elif tar[:4] == 'soma':
+            soma_col = 'cyan'
         else:
-            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' currently supported".format(tar[:4]))
+            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
 
 
 # visualisation ==========
-
-# creates colourmap
-vis_cmap = lsc.from_list('my_cmap',['black','blue','green','red'])
 
 # plots dendrites
 sections = h.SectionList([sec for sec in h.allsec() if 'dend' in str(sec)])
@@ -99,9 +108,9 @@ v = np.linspace(0, np.pi, 100)
 x = 12 * np.outer(np.cos(u), np.sin(v))
 y = 12 * np.outer(np.sin(u), np.sin(v))
 z = 12 * np.outer(np.ones(np.size(u)), np.cos(v))
-ps.plot_surface(x, y+5, z+10, color='black')
-ps.plot_surface(x, y+5, z+14, color='black')
-ps.plot_surface(x, y+5, z+17, color='black')
+ps.plot_surface(x, y+5, z+10, color=soma_col)
+ps.plot_surface(x, y+5, z+14, color=soma_col)
+ps.plot_surface(x, y+5, z+17, color=soma_col)
 
 # removes plot background
 ps.xaxis.pane.fill = False
