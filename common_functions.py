@@ -20,13 +20,13 @@ def exclude_at_start(tm, vm, time):
     plateaued.
     
     INPUT(S):
-        - tm: simulation time stamps
-        - vm: voltage values
-        - time: time (in ms) at start to exclude
+        - tm: time values [list of numbers]
+        - vm: voltage values [list of numbers]
+        - time: time (in ms) at start to exclude [number]
         
     OUTPUT(S):
-        - vm: time values with designated entries excluded
-        - vm: voltage values with designated entries excluded
+        - vm: time values with designated entries excluded [list of numbers]
+        - vm: voltage values with designated entries excluded [list of numbers]
         
     Thomas Binns (author), 29/01/21
     '''
@@ -374,13 +374,15 @@ def dpp_dur(tm, vm, base_vm, exclude=None):
     the maximum.
     
     INPUT(S):
-        - tm: simulation time          - vm: voltage values
-        - base_vm: baseline voltage    
+        - tm: time values [list of numbers]
+        - vm: voltage values [list of numbers]
+        - base_vm: baseline voltage [number]
         - exclude: values (in ms) at the start of the simulations that
-            will be ignored
+            will be ignored [number]
         
     OUTPUT(S):
         - length of time that the voltage is above half of the maximum voltage
+            [number]
     
     Thomas Binns (author), 28/01/21
     '''
@@ -408,13 +410,14 @@ def dpp_amp(tm, vm, base_vm, exclude=None):
     have one epsp.
     
     INPUT(S):
-        - tm: simulation time          - vm: voltage values
-        - base_vm: baseline voltage    
+        - tm: time values [list of numbers]
+        - vm: voltage values [list of numbers]
+        - base_vm: baseline voltage [number]
         - exclude: values (in ms) at the start of the simulations that
-            will be ignored
+            will be ignored [number]
         
     OUTPUT(S):
-        - maximum amplitude of the voltage trace
+        - maximum amplitude of the voltage trace [number]
     
     Thomas Binns (author), 27/01/21
     '''
@@ -434,11 +437,11 @@ def dpp_amp(tm, vm, base_vm, exclude=None):
         
 def save_data(data, path):
     '''
-    Saves data in the specified path
+    Saves json serialisable data in the specified path.
     
     INPUT(S):
-        - data: data to save         
-        - path: directory to save (including filename and type)
+        - data: data to save [must be json serialisable]        
+        - path: directory to save (including filename and type) [str]
         
     OUTPUT(S):
         None
@@ -453,10 +456,10 @@ def save_data(data, path):
     
 def load_data(path):
     '''
-    Loads data from the specified path
+    Loads data from the specified path.
     
     INPUT(S):
-        - path: directory to load (including filename and type)
+        - path: directory to load (including filename and type) [str]
         
     OUTPUT(S):
         - data: data that has been loaded
@@ -897,6 +900,95 @@ def draw_random_factors_ACh( mod_list ):
         mod[channel] = np.random.uniform( ranges[channel][0],ranges[channel][1] )
     return mod
 
+
+
+def draw_factors_ACh(cell_type, \
+                     modulate = ['all'], \
+                     mode = 'random'):
+    '''
+    Gets modulation values for the appropriate channels tailored to the 
+        requested cell type, based on the values in Lindroos and Kotaleski 
+        (2020).
+    
+    INPUT(S):
+        - cell_type: type of cell that is being modulated (must be 'dspn' or
+            'ispn') [str]
+        - modulate: which mechanisms should be modulated. If all applicable
+            mechanisms should be modulated, use ['all'] (default), else use a 
+            list with the mechanisms [list of str or strs]
+        - mode: 'random' (default; modulation value drawn randomly from the 
+            range of values) or 'mean' (modulation value taken as the mean of
+            the range of values) [str]
+        
+    OUTPUT(S):
+        - mod_info: mechanism modulation values [dict]
+    
+    Thomas Binns (author), 30/01/21
+    '''
+    
+    # ===== checks inputs are appropriate =====
+    
+    if cell_type != 'dspn' and cell_type != 'ispn':
+        raise ValueError("The requested cell type '{}' is not supported.\nOnly 'dpsn' and 'ispn' are recognised.".format(cell_type))
+        
+    if mode != 'random' and mode != 'mean':
+        raise ValueError("The requested mode '{}' is not supported.\nOnly 'random' and 'mean' are recognised.".format(mode))
+    
+    if not isinstance(modulate,list):
+        raise ValueError("The requested mechanism(s) to modulate should be given in a list format\n(e.g. ['all'], ['naf','kaf'], etc...), but have not been.")
+
+    
+    # ===== gets modulation factors =====
+    
+    # gets cell type-specific factors
+    if cell_type == 'dspn':
+        
+        ranges = {'naf':  [1.0 , 1.2],
+                  'kaf':  [0.0 , 10.0],
+                  'kir':  [0.8 , 1.0],
+                  'cal12':[0.3 , 0.7],
+                  'cal13':[0.3 , 0.7],
+                  'can':  [0.65, 0.85],
+                  'Im':   [0.0 , 0.4]}
+        
+    else:
+        ranges = {'naf':  [1.0 , 1.2],
+                  'kir':  [0.5 , 0.7],
+                  'cal12':[0.3 , 0.7],
+                  'cal13':[0.3 , 0.7],
+                  'can':  [0.65, 0.85],
+                  'Im':   [0.0 , 0.4],
+                  'NMDA': [1.0 , 1.05],
+                  'AMPA': [0.99, 1.01],
+                  'GABA': [0.99, 1.01]}
+    
+    
+    if modulate[0] == 'all':
+        modulate = []
+        for key in ranges:
+            modulate.append(key)
+    
+    
+    # gets modulation values
+    mod_vals = {}
+    
+    if mode == 'random':
+        for channel in modulate:
+            mod_vals[channel] = np.random.uniform(ranges[channel][0], \
+                                ranges[channel][1])
+    
+    else:
+        for channel in modulate:
+            mod_vals[channel] = sum(ranges[channel])/len(ranges[channel])
+    
+    
+    return mod_vals
+
+
+
+
+
+
 def draw_random_factors_DA_ispn( mod_list ):
     '''
     factors are later multiplied onto channel conductance.
@@ -1231,15 +1323,21 @@ def set_clustered_stim(     cell,               \
     Applies glutamatergic input to the same region of the cell.
     
     INPUT(S):
-        - cell: cell model          - section: region of cell to stimulate
-        - n: number of inputs       - act_time: time of stimulation
-        - syn_fact: ?               - delta: ?
-        - ISI: inter-spike interval between inputs
-        - x: position of section to stimulate
+        - cell: cell model [MSN object]
+        - section: region of cell to stimulate [str]
+        - n: number of inputs [int]
+        - act_time: time of stimulation (in ms) [number]
+        - syn_fact: two-element-long list of synaptic scaling factors (first
+            entry: AMPA scaling; second entry: NDMA scaling) [list]
+        - delta: delay to act_time (in ms) [number]
+        - ISI: inter-spike interval between inputs (in ms) [number]
+        - x: position of section to stimulate [number [0,1]]
      
      OUTPUT(S):
-         - syn: synapse object       - stim: NetStim object
-         - ncon: NetCon object       - d2soma: distance from section to soma
+         - syn: synapse object
+         - stim: NetStim object
+         - ncon: NetCon object
+         - d2soma: distance from section to soma (in micrometres) [int]
          
     Thomas Binns (modified), 25/01/21
     '''
@@ -1765,8 +1863,8 @@ def clear_folder(folder, extension=None):
     Deletes all files from the specified folder.
     
     INPUT(S):
-        - folder: folder to delete files from 
-        - extension: type of files to delete (e.g. .json)
+        - folder: folder to delete files from [str]
+        - extension: type of files to delete (e.g. .json) [str]
     
     OUTPUT(S):
         None
@@ -1807,33 +1905,41 @@ def clear_folder(folder, extension=None):
 def params_for_input(cell_type, input_type):
     '''
     Provides information about cell inputs for the specific type of cell and 
-    simulation
+    simulation.
     
     INPUT(S):
-        - cell_type: type of cell to simulate
-        - input_type: type of input to simulate
+        - cell_type: type of cell to simulate [str]
+        - input_type: type of input to simulate [str]
     
     OUTPUT(S):
-        - info: information on input targets with labels
+        - info: information on input targets (with labels) and 
+            stimulation timings, number of inputs, etc... [dict]
     
     Thomas Binns (author), 29/01/21
     '''
     
+    # ===== checks for correct input and cell types =====
     if input_type != 'clustered' and input_type != 'stim' and input_type != 'ACh':
-        raise ValueError("The specified input_type is not recognised.\nThis should be 'clustered', 'stim', or 'ACh'.")
+        raise ValueError("The input type {} is not recognised.\nThis should be 'clustered', 'stim', or 'ACh'.".format(input_type))
+        
+    if cell_type != 'dspn' and cell_type != 'ispn':
+        raise ValueError("The cell type {} is not recognised.\nThis should be 'dspn' or 'ispn'.".format(cell_type))
     
+    
+    # ===== clustered stimulation info; relevant for all simulations =====
     info = {}
     
-    # clustered stimulation info; relevant for all simulations
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
     info['clustered']['params'] = {'stim_n':16, 'stim_t':100, 'isi':1, \
                                    'pre_t':-50}
-    info['clustered']['params']['stop_t'] = info['clustered']['params']['stim_t'] \
-                                            + 250
+    info['clustered']['params']['stop_t'] = info['clustered']['params'] \
+                                            ['stim_t'] + 250
     
+    
+    # ===== cell type-specific info =====
     if cell_type == 'dspn':
-        info['clustered']['target'] = ['dend[49]','dend[51]']
+        info['clustered']['target'] = ['dend[49]','dend[51]']    
         
         if input_type == 'stim':
             # info['stim'] = {}
@@ -1841,12 +1947,10 @@ def params_for_input(cell_type, input_type):
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
-            info['ACh']['target'] = ['dend[49]','dend[51]','dend[48]','soma[0]']
-            info['ACh']['label'] = ['on-site proximal','on-site distal', \
-                                    'off-site','soma']
+            info['ACh']['target'] = ['dend[48]','soma[0]']
+            info['ACh']['label'] = ['off-site','soma']
         
-        
-    elif cell_type == 'ispn':
+    else:
         info['clustered']['target'] = ['dend[12]','dend[17]']
         
         if input_type == 'stim':
@@ -1855,13 +1959,18 @@ def params_for_input(cell_type, input_type):
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
-            info['ACh']['target'] = ['dend[12]','dend[17]','dend[8]','soma[0]']
-            info['ACh']['label'] = ['on-site proximal','on-site distal', \
-                                    'off-site','soma']
-            
-            
-    else:
-        raise ValueError("The specified cell_type is not recognised.\nThis should be 'dspn' or 'ispn'.")
+            info['ACh']['target'] = ['dend[8]','soma[0]']
+            info['ACh']['label'] = ['off-site','soma']
+    
+    
+    # ===== stimulation type-specific info =====
+    if input_type == 'ACh':
+        info['ACh']['params'] = {'stim_t':info['clustered']['params'] \
+                                          ['stim_t'] - 1, \
+                                 'stop_t':info['clustered']['params']['stop_t']}
+    elif input_type == 'stim':
+        # info['stim'] = []
+        raise ValueError('The specified input_type is not yet supported')
         
         
     return info
@@ -1870,54 +1979,66 @@ def params_for_input(cell_type, input_type):
             
 
 
-def get_dist(cell, \
-             other_origin = None, \
-             origin_x = .5, \
-             sec_type = ['soma','dend','axon'], \
-             sec_x = .5):
+def get_dists(cell,
+              other_origin = None,
+              origin_x = .5,
+              sec_type = ['soma','dend','axon'],
+              sec_x = .5,
+              only_sec = None):
     '''
     Gets the distance from the cell sections to the desired origin (in 
     micrometers).
     
     INPUT(S):
-        - cell: cell model to analyse
+        - cell: cell model to analyse [MSN object]
         - other_origin: cell section to take distance to. If None, soma[0] is 
-                        taken as the origin. To specify and alternative origin,
-                        pass a cell section (e.g. cell.dend[0])
+            taken as the origin. To specify and alternative origin, pass a cell 
+            section (e.g. cell.dend[0]) [MSN object section]
         - origin_x: part of the origin section to take distance to; middle of 
-                    the section by default
-        - sec_type: list of the type(s) of section(s) to get the distance for;
-                    all section types by default
+            the section by default [number [0,1]]
+        - sec_type: type(s) of section(s) to get the distance for (all section 
+            types by default) [list of strings]. If 'only_sec' given, 
+            'sec_type' is ignored
+        - only_sec: specific section(s) to get the distance for [list of str].
+            If given, 'sec_type' is ignored
         - origin_x: part of the section to take distance from; middle of the 
-                    section by default
+            section by default [number [0,1]]
                     
     OUTPUT(S):
-        - dists: dictionary for each requested section type containing a list 
-                 of distances to the origin
+        - dists: information for each requested section containing a list of 
+            distances to the origin [dict]
     
     Thomas Binns (author), 29/01/21
     '''
     
-    # checks that correct sec_types given
-    for types in sec_type:
-        if types != 'soma' and types != 'dend' and types != 'axon':
-            raise ValueError("The specified sec_type is not recognised.\nThis should be a list containing 'soma' and/or 'dend' and/or 'axon'.")
-    
-    # sets the origin
+    # ===== sets the origin =====
     if other_origin:
         origin = other_origin
     else:
         origin = cell.soma
     
     dists = {}
+    
+    if only_sec:
+        # ===== gets the distances to the origin =====
+        for secs in only_sec:
+            for sec in cell.allseclist:
+                 if sec.name() == secs:
+                     dists[secs] = int(h.distance(origin(origin_x),sec(sec_x)))
         
-    # gets the distances to the origin
-    for types in sec_type:
-        dists[types] = []
-        for sec in cell.allseclist:
-            if sec.name()[:4] == types:
-                print(types, sec)
-                dists[types].append(int(h.distance(origin(origin_x),sec(sec_x))))
+    else:
+        # ===== checks that correct sec_types given =====
+        for types in sec_type:
+            if types != 'soma' and types != 'dend' and types != 'axon':
+                raise ValueError("The specified section type(s) is not recognised.\nThis should be a list containing 'soma' and/or 'dend' and/or 'axon'.")            
+        
+        # ===== gets the distances to the origin =====
+        for types in sec_type:
+            dists[types] = []
+            for sec in cell.allseclist:
+                if sec.name()[:4] == types:
+                    dists[types].append(int(h.distance(origin(origin_x),sec(sec_x))))
+        
         
     return dists
 

@@ -51,7 +51,7 @@ cell_type = 'dspn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
-model_iterator = list(range(4)) # use model_iterator = range(specs[cell_type]['N']) for all models
+model_iterator = list(range(1)) # use model_iterator = range(specs[cell_type]['N']) for all models
 # for dspn, 10 has lowest rheo, 54 has highest, 22 has mean, 41 has median; 22 is also average for experimental value
 # for ispn, 8 has mean and median; 1 is average for experimental value
 
@@ -64,6 +64,7 @@ if pc.id() == 0:
 stim_info = cf.params_for_input(cell_type, 'clustered')
 target = stim_info['clustered']['target']
 target_labels = stim_info['clustered']['label']
+stim_data = stim_info['clustered']['params']
 
 # open library (channel distributions etc)   
 with open(specs[cell_type]['lib'], 'rb') as f:
@@ -72,15 +73,11 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 
 # simulate model(s) ======================
     
-OUT = {}
+data = {}
 
 # model information to pass to simulations
-model_data = {'specs':specs, 'cell_type':cell_type, 'model_sets':model_sets, \
-              'target':target}
-
-# stimulation information to pass to simulations
-stim_data = {'stim_n':16, 'stim_t':100, 'isi':1, 'pre_t':-50}
-stim_data['stop_t'] = stim_data['stim_t'] + 250
+model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets, \
+              'target':target, 'target_labels':target_labels}
 
 start = time.time() # for timing simulations
 
@@ -93,9 +90,9 @@ if pc.nhost() == 1: # use the serial form
     
     for cell_n, cell_index in enumerate(model_iterator): # for each model
         # simulate model
-        sim_info = {'curr_n':cell_n, 'tot_n':len(model_iterator)}
-        OUT[cell_index] = sf.dpp_validation(model_data, stim_data, \
-                          cell_index, sim_info)
+        run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator)}
+        data[cell_index] = sf.dpp_validation(model_data, stim_data, \
+                          cell_index, run_info)
             
 else: # use the bulleting board form
     
@@ -112,10 +109,10 @@ else: # use the bulleting board form
         #sys.stdout.flush()
         
     while pc.working(): # gather results
-        OUT = pc.pyret()
+        data = pc.pyret()
         # save file to folder
-        name = '{}_{}'.format(OUT[0]['cell_type'],OUT[0]['id'])
-        cf.save_data(OUT,'{}/{}.json'.format(folder,name))
+        name = '{}_{}'.format(data[0]['cell_type'],data[0]['id'])
+        cf.save_data(data,'{}/{}.json'.format(folder,name))
   
   
 pc.done() # end parallelisation
@@ -129,41 +126,41 @@ print('Simulations completed (took %.0f secs).\nNow performing calculations/coll
 
 # combine and/or average data ===========
 
-OUT_avg = {}
+data_avg = {}
 
 if collate:
     
-    OUT_all = {}
+    data_all = {}
     
     for n, i in enumerate(model_iterator):
         # load data
         name = '{}_{}'.format(cell_type,i)
-        OUT = cf.load_data('{}/{}.json'.format(folder,name))
+        data = cf.load_data('{}/{}.json'.format(folder,name))
         # combine data
-        OUT_all[i] = OUT
+        data_all[i] = data
         
-    OUT = OUT_all
+    data = data_all
     
     for i in range(len(target)): # collates and averages data
         
         idx = str(i)
-        OUT_avg[i] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
+        data_avg[i] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
                           'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
         
         for cell_index in model_iterator:
             
-            OUT_avg[i]['vm'].append(OUT[cell_index][idx]['vm'])
-            OUT_avg[i]['rheo'].append(OUT[cell_index][idx]['rheo'])
-            OUT_avg[i]['dur'].append(OUT[cell_index][idx]['dur'])
-            OUT_avg[i]['amp'].append(OUT[cell_index][idx]['amp'])
+            data_avg[i]['vm'].append(data[cell_index][idx]['vm'])
+            data_avg[i]['rheo'].append(data[cell_index][idx]['rheo'])
+            data_avg[i]['dur'].append(data[cell_index][idx]['dur'])
+            data_avg[i]['amp'].append(data[cell_index][idx]['amp'])
             
-        OUT_avg[i]['avg_vm'] = np.ndarray.tolist(np.mean(OUT_avg[i]['vm'],axis=0))
-        OUT_avg[i]['avg_rheo'] = float(np.mean(OUT_avg[i]['rheo']))
-        OUT_avg[i]['avg_dur'] = float(np.mean(OUT_avg[i]['dur']))
-        OUT_avg[i]['avg_amp'] = float(np.mean(OUT_avg[i]['amp']))
+        data_avg[i]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[i]['vm'],axis=0))
+        data_avg[i]['avg_rheo'] = float(np.mean(data_avg[i]['rheo']))
+        data_avg[i]['avg_dur'] = float(np.mean(data_avg[i]['dur']))
+        data_avg[i]['avg_amp'] = float(np.mean(data_avg[i]['amp']))
         
-    OUT_avg['meta'] = {'cell_type':cell_type, 'tm': OUT[cell_index]['0']['tm'], \
-                       'dist': [OUT[cell_index]['0']['dist'],OUT[cell_index]['1']['dist']], \
+    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index]['0']['tm'], \
+                       'dist': [data[cell_index]['0']['dist'],data[cell_index]['1']['dist']], \
                        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
                        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
                        'pre_t':stim_data['pre_t'], 'labels': target_labels, \
@@ -173,23 +170,23 @@ else:
     
     for idx in range(len(target)): # collates and averages data
         
-        OUT_avg[idx] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
+        data_avg[idx] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
                           'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
         
         for cell_index in model_iterator:
             
-            OUT_avg[idx]['vm'].append(OUT[cell_index][idx]['vm'])
-            OUT_avg[idx]['rheo'].append(OUT[cell_index][idx]['rheo'])
-            OUT_avg[idx]['dur'].append(OUT[cell_index][idx]['dur'])
-            OUT_avg[idx]['amp'].append(OUT[cell_index][idx]['amp'])
+            data_avg[idx]['vm'].append(data[cell_index][idx]['vm'])
+            data_avg[idx]['rheo'].append(data[cell_index][idx]['rheo'])
+            data_avg[idx]['dur'].append(data[cell_index][idx]['dur'])
+            data_avg[idx]['amp'].append(data[cell_index][idx]['amp'])
             
-        OUT_avg[idx]['avg_vm'] = np.ndarray.tolist(np.mean(OUT_avg[idx]['vm'],axis=0))
-        OUT_avg[idx]['avg_rheo'] = float(np.mean(OUT_avg[idx]['rheo']))
-        OUT_avg[idx]['avg_dur'] = float(np.mean(OUT_avg[idx]['dur']))
-        OUT_avg[idx]['avg_amp'] = float(np.mean(OUT_avg[idx]['amp']))
+        data_avg[idx]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[idx]['vm'],axis=0))
+        data_avg[idx]['avg_rheo'] = float(np.mean(data_avg[idx]['rheo']))
+        data_avg[idx]['avg_dur'] = float(np.mean(data_avg[idx]['dur']))
+        data_avg[idx]['avg_amp'] = float(np.mean(data_avg[idx]['amp']))
         
-    OUT_avg['meta'] = {'cell_type':cell_type, 'tm': OUT[cell_index][0]['tm'], \
-                       'dist': [OUT[cell_index][0]['dist'],OUT[cell_index][1]['dist']], \
+    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][0]['tm'], \
+                       'dist': [data[cell_index][0]['dist'],data[cell_index][1]['dist']], \
                        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
                        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
                        'pre_t':stim_data['pre_t'], 'labels': target_labels, \
@@ -199,7 +196,7 @@ else:
 
 # save collated data =================
 name = '{}_n{}.json'.format(cell_type,stim_data['stim_n'])
-cf.save_data(OUT_avg,name) # save data
+cf.save_data(data_avg,name) # save data
 print('Saving data as {}'.format(name))
 
 

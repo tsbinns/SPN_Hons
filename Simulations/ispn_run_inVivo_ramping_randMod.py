@@ -43,7 +43,7 @@ def run_model(cell_index, ci):
         model_sets  = pickle.load(f, encoding="latin1")
 
     parameters      =   model_sets[cell_index]['variables'] 
-    par             =   '../params_iMSN.json'
+    par             =   '../Params/params_iMSN.json'
     morphology      =   '../Morphologies/WT-dMSN_P270-20_1.02_SGA1-m24.swc'
 
     cell = build.MSN(  params=par,                  \
