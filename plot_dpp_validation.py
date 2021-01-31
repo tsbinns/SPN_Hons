@@ -11,47 +11,47 @@ import common_functions     as cf
 
 
 # load data
-OUT_avg = cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
+data_avg = cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
 
 
 # plotting =================
 
 
 # simulation data
-stim_n = OUT_avg['meta']['stim_n']
-stim_t = OUT_avg['meta']['stim_t']
-stop_t = OUT_avg['meta']['stop_t']
-pre_t = OUT_avg['meta']['pre_t']
-isi = OUT_avg['meta']['isi']
-cell_type = OUT_avg['meta']['cell_type']
-targets = OUT_avg['meta']['targets']
-target_labels = OUT_avg['meta']['labels']
-model_iterator = OUT_avg['meta']['specs']
+stim_n = data_avg['meta']['stim_n']
+stim_t = data_avg['meta']['stim_t']
+stop_t = data_avg['meta']['stop_t']
+pre_t = data_avg['meta']['pre_t']
+isi = data_avg['meta']['isi']
+cell_type = data_avg['meta']['cell_type']
+targets = data_avg['meta']['targets']
+target_labels = data_avg['meta']['labels']
+model_iterator = data_avg['meta']['specs']
 
-keys = list(OUT_avg.keys())
+keys = list(data_avg.keys())
 
 
 # plot voltage traces =====
-if len(OUT_avg[keys[0]]['amp']) == 1:
+if len(data_avg[keys[0]]['amp']) == 1:
     title = cell_type + ' ({}), n = '.format(model_iterator[0]) + \
-            str(stim_n) + ', rheo = ' + str(int(OUT_avg[keys[0]]['avg_rheo']))
+            str(stim_n) + ', rheo = ' + str(int(data_avg[keys[0]]['avg_rheo']))
 else:
     title = cell_type + ' (avg), n = ' + str(stim_n) + ', rheo = ' + \
-            str(int(OUT_avg[keys[0]]['avg_rheo']))
+            str(int(data_avg[keys[0]]['avg_rheo']))
 plt.figure()
 axs = plt.subplot(111)
 for i in range(len(targets)):
-    lab = OUT_avg['meta']['labels'][i] + \
-              ' ({} $\mu$m)'.format(OUT_avg['meta']['dist'][i])
+    lab = data_avg['meta']['labels'][i] + \
+              ' ({} $\mu$m)'.format(data_avg['meta']['dist'][i])
         
-    plt.plot(OUT_avg['meta']['tm'],OUT_avg[keys[i]]['avg_vm'], label=lab)
+    plt.plot(data_avg['meta']['tm'],data_avg[keys[i]]['avg_vm'], label=lab)
     
     # calculate std dev shading
-    std = np.std(OUT_avg[keys[i]]['vm'],axis=0)
-    std_plus = OUT_avg[keys[i]]['avg_vm'] + std
-    std_minus = OUT_avg[keys[i]]['avg_vm'] - std
+    std = np.std(data_avg[keys[i]]['vm'],axis=0)
+    std_plus = data_avg[keys[i]]['avg_vm'] + std
+    std_minus = data_avg[keys[i]]['avg_vm'] - std
     # plot std dev shading
-    axs.fill_between(OUT_avg['meta']['tm'],std_plus,std_minus,alpha=.1)
+    axs.fill_between(data_avg['meta']['tm'],std_plus,std_minus,alpha=.1)
     
 plt.legend()
 plt.show()
@@ -83,7 +83,7 @@ if len(model_iterator) > 1:
     fig.suptitle(title)
     
     # plots duration data
-    axs[0].boxplot([OUT_avg['0']['dur'],OUT_avg['1']['dur']],widths=.6)
+    axs[0].boxplot([data_avg['0']['dur'],data_avg['1']['dur']],widths=.6)
     axs[0].set_aspect(.08)
     axs[0].set_xticklabels(target_labels)
     axs[0].set_ylabel('duration (ms)')
@@ -91,7 +91,7 @@ if len(model_iterator) > 1:
     axs[0].spines['top'].set_visible(False)
     
     # plots amplitude data
-    axs[1].boxplot([OUT_avg['0']['amp'],OUT_avg['1']['amp']],widths=.6)
+    axs[1].boxplot([data_avg['0']['amp'],data_avg['1']['amp']],widths=.6)
     axs[1].set_aspect(.6)
     axs[1].set_xticklabels(target_labels)
     axs[1].set_ylabel('amplitude (mV)')

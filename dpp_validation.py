@@ -71,7 +71,7 @@ with open(specs[cell_type]['lib'], 'rb') as f:
     model_sets = pickle.load(f, encoding="latin1")
     
 
-# simulate model(s) ======================
+# ===== simulate model(s) =====
     
 data = {}
 
@@ -111,7 +111,8 @@ else: # use the bulleting board form
     while pc.working(): # gather results
         data = pc.pyret()
         # save file to folder
-        name = '{}_{}'.format(data[0]['cell_type'],data[0]['id'])
+        keys = list(data.keys())
+        name = '{}_{}'.format(data[keys[0]]['cell_type'],data[keys[0]]['id'])
         cf.save_data(data,'{}/{}.json'.format(folder,name))
   
   
@@ -119,12 +120,11 @@ pc.done() # end parallelisation
 
 
 # for timing simulations
-end = time.time()
-print('Simulations completed (took %.0f secs).\nNow performing calculations/collating data...' % (end-start))
+print('Simulations completed (took %.0f secs).\nNow performing calculations/collating data...' % (time.time()-start))
 
 
 
-# combine and/or average data ===========
+# =====combine and/or average data =====
 
 data_avg = {}
 
@@ -141,60 +141,59 @@ if collate:
         
     data = data_all
     
-    for i in range(len(target)): # collates and averages data
-        
-        idx = str(i)
+    for i, lab in enumerate(target_labels): # collates and averages data
+                
         data_avg[i] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
                           'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
         
         for cell_index in model_iterator:
             
-            data_avg[i]['vm'].append(data[cell_index][idx]['vm'])
-            data_avg[i]['rheo'].append(data[cell_index][idx]['rheo'])
-            data_avg[i]['dur'].append(data[cell_index][idx]['dur'])
-            data_avg[i]['amp'].append(data[cell_index][idx]['amp'])
+            data_avg[i]['vm'].append(data[cell_index][lab]['vm'])
+            data_avg[i]['rheo'].append(data[cell_index][lab]['rheo'])
+            data_avg[i]['dur'].append(data[cell_index][lab]['dur'])
+            data_avg[i]['amp'].append(data[cell_index][lab]['amp'])
             
         data_avg[i]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[i]['vm'],axis=0))
         data_avg[i]['avg_rheo'] = float(np.mean(data_avg[i]['rheo']))
         data_avg[i]['avg_dur'] = float(np.mean(data_avg[i]['dur']))
         data_avg[i]['avg_amp'] = float(np.mean(data_avg[i]['amp']))
         
-    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index]['0']['tm'], \
-                       'dist': [data[cell_index]['0']['dist'],data[cell_index]['1']['dist']], \
-                       'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
-                       'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
-                       'pre_t':stim_data['pre_t'], 'labels': target_labels, \
-                       'targets':target, 'specs':model_iterator} 
+    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][lab]['tm'], \
+                        'dist': [data[cell_index][target_labels[0]]['dist'],data[cell_index][target_labels[1]]['dist']], \
+                        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
+                        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
+                        'pre_t':stim_data['pre_t'], 'labels': target_labels, \
+                        'targets':target, 'specs':model_iterator} 
         
 else:
     
-    for idx in range(len(target)): # collates and averages data
+    for i, lab in enumerate(target_labels): # collates and averages data
         
-        data_avg[idx] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
+        data_avg[lab] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
                           'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
         
         for cell_index in model_iterator:
             
-            data_avg[idx]['vm'].append(data[cell_index][idx]['vm'])
-            data_avg[idx]['rheo'].append(data[cell_index][idx]['rheo'])
-            data_avg[idx]['dur'].append(data[cell_index][idx]['dur'])
-            data_avg[idx]['amp'].append(data[cell_index][idx]['amp'])
+            data_avg[lab]['vm'].append(data[cell_index][lab]['vm'])
+            data_avg[lab]['rheo'].append(data[cell_index][lab]['rheo'])
+            data_avg[lab]['dur'].append(data[cell_index][lab]['dur'])
+            data_avg[lab]['amp'].append(data[cell_index][lab]['amp'])
             
-        data_avg[idx]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[idx]['vm'],axis=0))
-        data_avg[idx]['avg_rheo'] = float(np.mean(data_avg[idx]['rheo']))
-        data_avg[idx]['avg_dur'] = float(np.mean(data_avg[idx]['dur']))
-        data_avg[idx]['avg_amp'] = float(np.mean(data_avg[idx]['amp']))
+        data_avg[lab]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[lab]['vm'],axis=0))
+        data_avg[lab]['avg_rheo'] = float(np.mean(data_avg[lab]['rheo']))
+        data_avg[lab]['avg_dur'] = float(np.mean(data_avg[lab]['dur']))
+        data_avg[lab]['avg_amp'] = float(np.mean(data_avg[lab]['amp']))
         
-    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][0]['tm'], \
-                       'dist': [data[cell_index][0]['dist'],data[cell_index][1]['dist']], \
-                       'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
-                       'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
-                       'pre_t':stim_data['pre_t'], 'labels': target_labels, \
-                       'targets':target, 'specs':model_iterator}        
+    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][lab]['tm'], \
+                        'dist': [data[cell_index][target_labels[0]]['dist'],data[cell_index][target_labels[1]]['dist']], \
+                        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
+                        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
+                        'pre_t':stim_data['pre_t'], 'labels': target_labels, \
+                        'targets':target, 'specs':model_iterator}        
 
 
 
-# save collated data =================
+# ===== save collated data =====
 name = '{}_n{}.json'.format(cell_type,stim_data['stim_n'])
 cf.save_data(data_avg,name) # save data
 print('Saving data as {}'.format(name))

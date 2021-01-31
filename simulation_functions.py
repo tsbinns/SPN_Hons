@@ -53,6 +53,9 @@ def dpp_validation(model_data,
     # ===== simulation =====
     data = {}
     for i, t in enumerate(model_data['target']): # for each simulation target
+        
+        clus_lab = model_data['target_labels'][i] # label for input target
+        
         # initiate cell
         cell = build.MSN(params=model_data['specs']['par'],
                          morphology=model_data['specs']['morph'],
@@ -77,15 +80,15 @@ def dpp_validation(model_data,
         vm = vm.to_python()
         
         # collate data
-        data[i] = {'tm':tm, 'vm':vm, 'dist':d2soma, 'rheo':rheobase, \
-                   'id':int(cell_index), 'cell_type':model_data['cell_type']}
+        data[clus_lab] = {'tm':tm, 'vm':vm, 'dist':d2soma, 'rheo':rheobase, \
+            'id':int(cell_index), 'cell_type':model_data['cell_type']}
         
         if dur_and_amp:
             # calculate dpp duration and amplitude
             base_t = tm.index(min(tm, key=lambda x:abs(x-stim_data['stim_t'])))-1
-            data[model_data['target_labels'][i]]['dur'] = \
+            data[clus_lab]['dur'] = \
                 cf.dpp_dur(tm,vm,vm[base_t],stim_data['stim_t'])
-            data[model_data['target_labels'][i]]['amp'] = \
+            data[clus_lab]['amp'] = \
                 cf.dpp_amp(tm,vm,vm[base_t],stim_data['stim_t'])
             
         
@@ -137,9 +140,8 @@ def ACh_modulation(model_data,
     ACh_params = stim_data['ACh']['params'] # parameters for cholinergic input
     
     # gets vector for modulation timing
-    state = [1 if ht >= ACh_params['stim_t'] and \
-             ht <= ACh_params['stop_t'] else 0 for ht in \
-             np.arange(0,clus_params['stop_t'],h.dt)]
+    state = [1 if ht >= ACh_params['stim_t'] and ht <= ACh_params['stop_t'] \
+             else 0 for ht in np.arange(0,clus_params['stop_t'],h.dt)]
     if 'kaf' in mod_factors:
         kaf_state = [x * mod_factors['kaf'] for x in state]
         kaf_state = h.Vector(kaf_state)
@@ -196,7 +198,7 @@ def ACh_modulation(model_data,
             
             # get cholinergic modulation class
             mod = modulate.set_ACh(cell, mod_factors, [ACh_t], target_x=.5,
-                play=mech_scale)
+                play=mech_scale, dt=h.dt)
             
             # run simulation
             h.finitialize(-80)
