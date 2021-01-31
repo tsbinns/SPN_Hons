@@ -182,8 +182,9 @@ data_avg['meta']['ACh'] = {
     
     
 # ===== save collated data =====
+folder = 'Data/'
 name = '{}_n{}_modulation.json'.format(cell_type,stim_data['clustered']['params']['stim_n'])
-cf.save_data(data_avg,name) # save data
+cf.save_data(data_avg,folder+name)
 print('Saving data as {}'.format(name))
 
 

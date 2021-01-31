@@ -170,8 +170,9 @@ data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][lab]['tm'], \
 
 
 # ===== save collated data =====
+folder = 'Data/'
 name = '{}_n{}_validation.json'.format(cell_type,stim_data['stim_n'])
-cf.save_data(data_avg,name) # save data
+cf.save_data(data_avg,folder+name)
 print('Saving data as {}'.format(name))
 
 
