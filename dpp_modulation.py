@@ -44,7 +44,7 @@ specs = {'dspn': {
 
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 cell_type         = 'dspn'    # 'dspn'/'ispn'
-model_iterator    = list(range(1))  # range(specs[cell_type]['N']) gives all models; must be a list for saving data!
+model_iterator    = list(range(2))  # range(specs[cell_type]['N']) gives all models; must be a list for saving data!
 # for dspn, 10 has lowest rheo, 54 has highest, 22 has mean, 41 has median; 22 is also average for experimental value
 # for ispn, 8 has mean and median; 1 is average for experimental value
 if pc.id() == 0:
@@ -59,6 +59,7 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
+
 
 
 # ===== gets cholinergic modulation factors =====
@@ -103,7 +104,7 @@ else: # use the bulleting board form
         # save file to folder
         keys_1 = list(data.keys())
         keys_2 = list(data[keys_1[0]].keys())
-        name = '{}_{}'.format(cell_type,data[keys_1[0]][keys_2[0]]['id'])
+        name = '{}_{}_modulation'.format(cell_type,data[keys_1[0]][keys_2[0]]['id'])
         cf.save_data(data,'{}/{}.json'.format(folder,name))
     
     
@@ -119,83 +120,77 @@ print('Simulations completed (took %.0f secs).\nNow performing calculations/coll
 
 data_avg = {}
 
-if collate:
+if collate: # collates data if loading from files
     
     data_all = {}
     
     for n, i in enumerate(model_iterator):
         # load data
-        name = '{}_{}'.format(cell_type,i)
+        name = '{}_{}_modulation'.format(cell_type,i)
         data = cf.load_data('{}/{}.json'.format(folder,name))
         # combine data
         data_all[i] = data
         
     data = data_all
     
-    for i, lab in enumerate(target_labels): # collates and averages data
-                
-        data_avg[i] = {'vm':[], 'avg_vm':[], 'rheo':[], 'avg_rheo':[], \
-                          'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
+
+# averages data
+for i, clus_lab in enumerate(stim_data['clustered']['label']): # for each clustered stimulation target
+    
+    data_avg[clus_lab] = {clus_lab:[]}
+    
+    for j, ACh_lab in enumerate(stim_data['ACh']['label']): # for each cholinergic stimulation target
+    
+        data_avg[clus_lab][ACh_lab] = {'vm':[], 'avg_vm':[], 'rheo':[],
+            'avg_rheo':[], 'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
         
-        for cell_index in model_iterator:
+        for cell_index in model_iterator: # for each simulated cell
             
-            data_avg[i]['vm'].append(data[cell_index][lab]['vm'])
-            data_avg[i]['rheo'].append(data[cell_index][lab]['rheo'])
-            data_avg[i]['dur'].append(data[cell_index][lab]['dur'])
-            data_avg[i]['amp'].append(data[cell_index][lab]['amp'])
-            
-        data_avg[i]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[i]['vm'],axis=0))
-        data_avg[i]['avg_rheo'] = float(np.mean(data_avg[i]['rheo']))
-        data_avg[i]['avg_dur'] = float(np.mean(data_avg[i]['dur']))
-        data_avg[i]['avg_amp'] = float(np.mean(data_avg[i]['amp']))
+            data_avg[clus_lab][ACh_lab]['vm'].append(data[cell_index][clus_lab][ACh_lab]['vm'])
+            data_avg[clus_lab][ACh_lab]['rheo'].append(data[cell_index][clus_lab][ACh_lab]['rheo'])
+            data_avg[clus_lab][ACh_lab]['dur'].append(data[cell_index][clus_lab][ACh_lab]['dur'])
+            data_avg[clus_lab][ACh_lab]['amp'].append(data[cell_index][clus_lab][ACh_lab]['amp'])
         
-    data_avg['meta'] = {'cell_type':cell_type, 'tm': data[cell_index][lab]['tm'], \
-                        'dist': [data[cell_index][target_labels[0]]['dist'],data[cell_index][target_labels[1]]['dist']], \
-                        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'], \
-                        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'], \
-                        'pre_t':stim_data['pre_t'], 'labels': target_labels,
-                        'targets':target, 'specs':model_iterator} 
-        
-else:
+        data_avg[clus_lab][ACh_lab]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[clus_lab][ACh_lab]['vm'],axis=0))
+        data_avg[clus_lab][ACh_lab]['avg_rheo'] = float(np.mean(data_avg[clus_lab][ACh_lab]['rheo']))
+        data_avg[clus_lab][ACh_lab]['avg_dur'] = float(np.mean(data_avg[clus_lab][ACh_lab]['dur']))
+        data_avg[clus_lab][ACh_lab]['avg_amp'] = float(np.mean(data_avg[clus_lab][ACh_lab]['amp']))
     
-    for i, clus_lab in enumerate(stim_data['clustered']['label']): # for each clustered stimulation target
-        
-        data_avg[clus_lab] = {clus_lab:[]}
-        
-        for j, ACh_lab in enumerate(stim_data['ACh']['label']): # for each cholinergic stimulation target
-        
-            data_avg[lab][ACh_lab] = {'vm':[], 'avg_vm':[], 'rheo':[],
-                'avg_rheo':[], 'dur':[], 'avg_dur':[], 'amp':[], 'avg_amp':[]}
-            
-            for cell_index in model_iterator: # for each simulated cell
-                
-                data_avg[clus_lab][ACh_lab]['vm'].append(data[cell_index][clus_lab][ACh_lab]['vm'])
-                data_avg[clus_lab][ACh_lab]['rheo'].append(data[cell_index][clus_lab][ACh_lab]['rheo'])
-                data_avg[clus_lab][ACh_lab]['dur'].append(data[cell_index][clus_lab][ACh_lab]['dur'])
-                data_avg[clus_lab][ACh_lab]['amp'].append(data[cell_index][clus_lab][ACh_lab]['amp'])
-            
-            data_avg[clus_lab][ACh_lab]['avg_vm'] = np.ndarray.tolist(np.mean(data_avg[clus_lab][ACh_lab]['vm'],axis=0))
-            data_avg[clus_lab][ACh_lab]['avg_rheo'] = float(np.mean(data_avg[clus_lab][ACh_lab]['rheo']))
-            data_avg[clus_lab][ACh_lab]['avg_dur'] = float(np.mean(data_avg[clus_lab][ACh_lab]['dur']))
-            data_avg[clus_lab][ACh_lab]['avg_amp'] = float(np.mean(data_avg[clus_lab][ACh_lab]['amp']))
-        
-    # general simulation info
-    data_avg['meta'] = {'cell_type':cell_type, 'specs':model_iterator,
-        'tm':data[cell_index][clus_lab][ACh_lab]['tm'], 'clus':[], 'ACh':[]}
-    
-    # clustered input-specific info
-    
-    
-    # cholinergic input-specific info
+# general simulation info
+data_avg['meta'] = {'cell_type':cell_type, 'specs':model_iterator,
+    'tm':data[cell_index][clus_lab][ACh_lab]['tm'], 'clus':[], 'ACh':[]}
+
+# clustered input-specific info
+data_avg['meta']['clus'] = {
+    'dist':[data[cell_index]['distal dend']['distal dend']['clust_dist'],data[cell_index]['proximal dend']['proximal dend']['clust_dist']],
+    'stim_n':stim_data['clustered']['params']['stim_n'],
+    'isi':stim_data['clustered']['params']['isi'],
+    'stim_t':stim_data['clustered']['params']['stim_t'],
+    'stop_t':stim_data['clustered']['params']['stop_t'],
+    'pre_t':stim_data['clustered']['params']['pre_t'],
+    'labels':stim_data['clustered']['label'],
+    'targets':stim_data['clustered']['target']}
+
+# cholinergic input-specific info
+data_avg['meta']['ACh'] = {
+    'dist':[data[cell_index]['distal dend']['off-site'],data[cell_index]['distal dend']['soma']], 
+    'stim_t':stim_data['ACh']['params']['stim_t'],
+    'stop_t':stim_data['ACh']['params']['stop_t'],
+    'labels':stim_data['ACh']['label'],
+    'targets':stim_data['ACh']['target']}
     
     
     
-    
-        'dist': [data[cell_index][target_labels[0]]['dist'],data[cell_index][target_labels[1]]['dist']],
-        'stim_n':stim_data['stim_n'], 'isi':stim_data['isi'],
-        'stim_t':stim_data['stim_t'], 'stop_t':stim_data['stop_t'],
-        'pre_t':stim_data['pre_t'], 'labels': target_labels,
-        'targets':target, 'specs':model_iterator}
+# ===== save collated data =====
+name = '{}_n{}_modulation.json'.format(cell_type,stim_data['clustered']['params']['stim_n'])
+cf.save_data(data_avg,name) # save data
+print('Saving data as {}'.format(name))
+
+
+
+h.quit()
+
+
 
 '''
 for i in data:
