@@ -3,11 +3,13 @@ common functions for SPN simulations
 '''
 
 
-from    neuron  import          h
-import  numpy                as np
-import  os, shutil
-import  pickle
-import  json, codecs
+from   neuron     import           h
+from   matplotlib import pyplot as plt
+import numpy                    as np
+import os, shutil
+import pickle
+import json, codecs
+
 
 
 
@@ -1850,6 +1852,107 @@ def make_shape( diameter_style=0,   \
             s.point_mark(2, "O", 10, sec=point)
     s.exec_menu("Shape Plot")
     return s
+
+
+
+
+
+def grouped_boxplot(data, ax, labels=None, colors=None):
+    '''
+    
+    '''
+    
+    # ===== checks that inputs are appropriate =====
+    # checks appropriate number of/enough colours are given and that colors in correct format
+    if colors:
+        if not isinstance(colors, list):
+            raise ValueError("Colors must be given as a list.")
+        if len(colors) != len(data):
+            raise ValueError("The number of colors given ({}) does not match the number of data subgroups ({})."\
+                .format(len(colors),len(data)))
+    else:
+        colors = (plt.rcParams['axes.prop_cycle']).by_key()['color']
+        if len(data) > len(colors):
+            raise ValueError("The number of data subgroups ({}) is greater than the number of default colors ({}).\nPlease provide your own colors to plot."\
+                .format(len(data),len(colors)))
+        colors = colors[:len(data)]
+    
+    # checks data is in the correct format
+    if not isinstance(data, dict):
+        raise ValueError("Data must be given as a dict.")
+    
+    # checks each data group has the same number of subgroups
+    for i, key in enumerate(data):
+        if i == 0:
+            n_groups = len(data[key])
+        else:
+            if len(data[key]) != n_groups:
+                raise ValueError("Each data group must have the same number of subgroups.")
+                
+    # checks labels are given in the correct format  
+    if labels:
+        if not isinstance(labels, dict):
+            raise ValueError("Labels must be given as a dict.")
+        labs = ['axes','groups','subgroups']
+        for i, lab in enumerate(labs):
+            if lab not in labels:
+                labels[lab] = []
+            if lab == 'axes':
+                if 'x' not in labels[lab]:
+                    labels[lab]['x'] = []
+                if 'y' not in labels[lab]:
+                    labels[lab]['y'] = []
+                if len(labels[lab]) > 2:
+                    raise ValueError("Unknown axes label keys are given, they should only be one or both of: ['x', 'y'].")
+        if len(labels) > len(labs):
+            raise ValueError("Unknown label keys are given, they should only be one or all of:{}.".format(labs))
+    
+    
+    
+    # ===== defines functions =====
+    def set_box_col(bp, color):
+            plt.setp(bp['boxes'], color=color)
+            plt.setp(bp['whiskers'], color=color)
+            plt.setp(bp['caps'], color=color)
+            plt.setp(bp['medians'], color=color)
+
+    
+    # ===== plots data =====
+    # where to place subgroups plots
+    scale = 1.5 + .5*(len(data)-1)
+    subgroup_pos = [x / 10 for x in np.linspace(scale*-len(data), scale*len(data), num=len(data), endpoint=True)]
+    
+    # where to put labels for groups
+    group_pos = [x + np.mean(subgroup_pos) for x in np.array(range(len(data[key])))*len(data)]
+
+    
+    # plots data in groups and subgroups
+    bps={}
+    for i, key in enumerate(data):
+        bps[i] = ax.boxplot(data[key], positions=np.array(range(len(data[key])))*len(data)+subgroup_pos[i], sym='', widths=.6)
+        # colour subgroup boxes
+        set_box_col(bps[i], colors[i])
+        # plot temporary coloured lines to create a legend for subgroups
+        if labels['subgroups']:
+            ax.plot([], color=colors[i], label=labels['subgroups'][i])
+        else:
+            ax.plot([], color=colors[i], label=key)
+        
+    ax.legend()
+    
+    # labels groups
+    ax.set_xticks(group_pos)
+    if labels['groups']:
+        ax.set_xticklabels(labels['groups'])
+    else:
+        ax.set_xticklabels(np.arange(0,n_groups,step=1))
+    
+    # labels axes
+    if labels['axes']['x']: # x axis
+        ax.set_xlabel(labels['axes']['x'])
+    if labels['axes']['y']: # y axis
+        ax.set_ylabel(labels['axes']['y'])
+    
 
 
 
