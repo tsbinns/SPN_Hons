@@ -9,7 +9,7 @@ import numpy                    as np
 import os, shutil
 import pickle
 import json, codecs
-
+import random
 
 
 
@@ -708,6 +708,66 @@ def set_bg_noise(cell,              \
         
     
     return Syn, nc, ns
+
+
+
+
+
+def set_noise(cell,
+              freq_glut = 1,
+              freq_gaba = .5,
+              n_glut = 400,
+              n_gaba = 100,
+              only_dend = True,
+              delays=[]          ):
+    '''
+    
+    
+    Thomas Binns (modified), 02/02/21
+    '''
+    
+    if only_dend:
+        compartments = cell.dendlist
+    else:
+        compartments = cell.allseclist
+    
+    ns      = {}
+    nc      = {}
+    Syn     = {}
+    
+    gbase = 0.2e-3
+    
+    for s, sec in enumerate(compartments):
+        
+        # set bg noise----------------------------------
+        
+        if len(delays) == 0:
+            delay = 0
+        else:
+            delay = delays[s]
+            
+        # create a glut synapse (glutamate)
+        random_synapse(ns, nc, Syn, sec, 0.5,
+                                NS_interval = 1000/freq_glut,
+                                NC_conductance = gbase,
+                                NS_start = delay,
+                                seed = None)
+        # create a gaba synapse (Exp2Syn)
+        random_synapse(ns, nc, Syn, sec, 0.1,
+                                Type = 'gaba',
+                                NS_interval = 1000/freq_gaba,
+                                NC_conductance = gbase*5,
+                                NS_start = delay,
+                                seed=None)
+        
+        Syn[sec.name()+'_glut'].ratio = 1.0
+        
+    
+    return Syn, ns, nc
+
+
+
+
 
 # more intricate copy
 def set_bg_noise_with_flags(cell,              \
@@ -1961,6 +2021,83 @@ def grouped_boxplot(data, ax, labels=None, colors=None):
 # ===== OTHER =================
 
 
+
+def select_iterations(model_sets, n_iters=10):
+    '''
+    Randomly selects which model iterations to used based on their rheobase values.
+    
+    INPUT(S):
+        - model_sets: dictionary containing the details of the various available models [dict]
+        - n_iters: number of model iterations to choose [int]
+        
+    OUTPUT(S):
+        - chosen_iters: dictionary containing the ids of the chosen model, their rheobase values, as well as info
+            on these values [dict]
+    
+    Thomas Binns (author), 02/02/21    
+    '''
+    
+    # collects rheobase values
+    rheos = []
+    for i in range(len(model_sets)):
+        rheos.append(int(model_sets[i]['rheobase']))
+        
+    # gets indexes of rheobase values as if they were sorted in ascending order
+    sorted_idxs = np.argsort(rheos)
+    sorted_idxs = sorted_idxs.tolist()
+    
+    # gets rheos to take 
+    sample_idxs = random.sample(sorted_idxs, n_iters)
+    chosen_rheos = []
+    for i in sample_idxs:
+        chosen_rheos.append(rheos[i])
+        
+    # gets data on chosen iterations
+    chosen_iters = {'ids':sample_idxs, 'rheos':chosen_rheos, 'mean':sum(chosen_rheos)/len(chosen_rheos),
+                    'min':min(chosen_rheos), 'max':max(chosen_rheos)}
+    
+    return chosen_iters
+    
+
+
+
+def iter_params(cell_type, only_ids=False):
+    '''
+    Returns the model iterations that have been chosen for simulation based on randomly chosing the models based
+    on their rheobase values.
+    
+    INPUT(S):
+        - cell_type: cell type to simulate. Should be 'dspn' or 'ispn' [str]
+        - only_ids: if True, only the ids of the iterations to simulate are returned
+        
+    OUTPUT(S):
+        - chosen_iters: dictionary containing the ids of the chosen model, their rheobase values, as well as info
+            on these values [dict]
+    
+    Thomas Binns (author), 02/02/21
+    '''
+    
+    if cell_type == 'dspn':
+        chosen_iters = {'ids': [19, 47, 65, 38, 61, 39, 7, 29, 68, 57],
+                        'rheos': [387, 297, 399, 322, 362, 341, 318, 320, 380, 390],
+                        'mean': 351.6, 'min': 297, 'max': 399}
+    elif cell_type == 'ispn':
+        chosen_iters = {'ids': [16, 2, 9, 5, 23, 3, 17, 26, 30, 31],
+                        'rheos': [320, 199, 281, 355, 356, 253, 362, 330, 238, 296],
+                        'mean': 299.0, 'min': 199, 'max': 362}
+    else:
+        raise ValueError("The cell type {} is not recognised.\nThis should be 'dspn' or 'ispn'.".format(cell_type))
+        
+    if only_ids == True:
+        chosen_iters = chosen_iters['ids']
+    
+    return chosen_iters
+    
+    
+    
+
+
+
 def clear_folder(folder, extension=None):
     '''
     Deletes all files from the specified folder.
@@ -2145,6 +2282,50 @@ def get_dists(cell,
         
     return dists
 
+
+
+
+
+def HF_input_arrangement(cell, exclude=[], n_inputs=20, n_to_gen=1):
+    '''
+    Chooses which cell sections to provide high-frequency input to.
+    
+    INPUT(S):
+        - cell: cell to provide input to [MSN object]
+        - exclude: sections of the cell not to be targeted [list of str(s)]
+        - n_inputs: number of inputs to provide the cell [int]
+        - n_to_gen: number of arrangements to generate [int]
+        
+    OUTPUT(S):
+        - arrangement: n_to_gen-long dictionary containing the names of sections to stimulate and the
+            distances of these sections to the soma [dict]
+    
+    Thomas Binns (author), 02/02/21
+    '''
+    
+    # ===== gets cell sections and excludes sections, if applicable =====
+    all_secs = []
+    for sec in cell.allseclist:
+        if sec.name() not in exclude:
+            all_secs.append(sec.name())
+    
+    
+    # ===== chooses sections to receive input =====
+    arrangement = {}
+    for i in range(n_to_gen):
+        arrangement[i] = {}
+        
+        # chooses sections
+        sample_idxs = random.sample(range(len(all_secs)), n_inputs)
+        arrangement[i]['targets'] = [all_secs[x] for x in sample_idxs]
+        
+        # gets distance info
+        dists = get_dists(cell, only_sec=arrangement[i]['targets'])
+        arrangement[i]['dists'] = [x for x in dists.values()]
+        arrangement[i]['mean dist'] = sum(arrangement[i]['dists']) / len(arrangement[i]['dists'])
+        
+        
+    return arrangement
 
 
 

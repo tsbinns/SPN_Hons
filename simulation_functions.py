@@ -96,6 +96,100 @@ def dpp_validation(model_data,
 
 
 
+def dpp_generation(model_data,
+                   cell_index,
+                   run_info,
+                   noise = True,
+                   HFI = False,
+                   dur_and_amp = True):
+    '''
+    Provides clustered glutamatergic input to SPNs to generate the dendritic 
+    plateau potential in the absence of modulation.
+    
+    INPUT(S):
+        - model_data: model paramaters (specification, cell type, model 
+            sets, and stimulation targets) [dict]
+        - stim_data: stimulation parameters (number of inputs, time of inputs,
+            input inter-spike intervals, time to stop simulating) [dict]
+        - cell_index: cell specification being simulated [int]
+        - run_info: information about the simulation run (this simulation and 
+            total number of simulations) [dict]
+        - dur_and_amp: whether to calculate the duration and peak amplitude of
+            the plateau potential (default True) [bool]
+        
+    OUTPUT(S):
+        - data: simulated data including: simulation times; simulated voltages;
+            distance of stimulated target to the soma; rheobase of the model; 
+            half-max width of the potential; peak amplitude of the potential;
+            cell specification being simulated; cell type being simulated
+            [dict]
+        - ncon: NetCon object
+            
+    Thomas Binns (author), 26/01/21
+    '''
+    
+    # ===== print simulation info to monitor progress =====
+    print('Simulating cell specification {} of {}'.format( \
+          run_info['curr_n']+1,run_info['tot_n']),flush = True)
+    
+    
+    # ===== gets clustered input targets =====
+    clus_info = cf.params_for_input(model_data['cell_type'], 'clustered')
+    clus_params = clus_info['clustered']['params']
+    
+    # ===== simulation =====
+    data = {}
+    for i, tar in enumerate(clus_info['clustered']['target']): # for each simulation target
+        
+        clus_lab = clus_info['clustered']['label'][i] # label for input target
+        
+        # initiate cell
+        cell = build.MSN(params=model_data['specs']['par'],
+                         morphology=model_data['specs']['morph'],
+                         variables=model_data['model_sets'][cell_index]['variables'])
+        rheobase = model_data['model_sets'][cell_index]['rheobase']
+        
+        # record vectors
+        tm = h.Vector()
+        tm.record(h._ref_t)
+        vm = h.Vector()
+        vm.record(cell.soma(0.5)._ref_v)
+        
+        # add clustered inputs
+        clus_syn, clus_stim, clus_ncon, clus_d2soma = cf.set_clustered_stim(cell, tar ,n=clus_params['stim_n'],
+            act_time=clus_params['stim_t'], ISI=clus_params['isi'])
+        
+        # add background noise
+        if noise:
+            noise_syn, noise_stim, noise_ncon = cf.set_noise(cell)
+        
+        # add high-frequency inputs
+        if HFI:
+            raise ValueError('nope')
+        
+        # run simulation
+        h.finitialize(-80)
+        while h.t < clus_params['stop_t']:
+            h.fadvance()
+        tm = tm.to_python()
+        vm = vm.to_python()
+        
+        # collate data
+        data[clus_lab] = {'tm':tm, 'vm':vm, 'rheo':rheobase, 'id':int(cell_index), 
+            'cell_type':model_data['cell_type']}
+        
+        if dur_and_amp:
+            # calculate dpp duration and amplitude
+            base_t = tm.index(min(tm, key=lambda x:abs(x-clus_params['stim_t'])))-1
+            data[clus_lab]['dur'] = cf.dpp_dur(tm, vm, vm[base_t], clus_params['stim_t'])
+            data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, vm[base_t], clus_params['stim_t'])
+            
+        
+    return data
+
+
+
+
 def ACh_modulation(model_data,
                    stim_data,
                    cell_index,

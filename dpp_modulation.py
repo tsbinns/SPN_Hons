@@ -42,7 +42,7 @@ specs = {'dspn': {
         
 
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
-cell_type         = 'dspn'    # 'dspn'/'ispn'
+cell_type         = 'ispn'    # 'dspn'/'ispn'
 model_iterator    = list(range(specs[cell_type]['N']))  # range(specs[cell_type]['N']) gives all models; must be a list for saving data!
 # for dspn, 10 has lowest rheo, 54 has highest, 22 has mean, 41 has median; 22 is also average for experimental value
 # for ispn, 8 has mean and median; 1 is average for experimental value

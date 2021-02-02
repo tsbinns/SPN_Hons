@@ -11,8 +11,8 @@ import common_functions     as cf
 
 
 # load data
-data_avg = cf.load_data('Data/dspn_n16_modulation.json')#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
-ctrl_data = cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16_validation.json')
+data_avg = cf.load_data('Data/ispn_n16_modulation.json')#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
+ctrl_data = cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/ispn_n16_validation.json')
 
 
 # ===== organise data =====
@@ -178,30 +178,4 @@ if len(model_iterator) > 1:
     axs[1].spines['top'].set_visible(False)
     axs[1].grid(True)
 
-    
-
-
-'''
-# ===== plot duration and amplitude data =====
-if len(model_iterator) > 1:
-    
-    fig, axs = plt.subplots(1,2)
-    fig.suptitle(title)
-    
-    # plots duration data
-    axs[0].boxplot([data_avg['0']['dur'],data_avg['1']['dur']],widths=.6)
-    axs[0].set_aspect(.08)
-    axs[0].set_xticklabels(target_labels)
-    axs[0].set_ylabel('duration (ms)')
-    axs[0].spines['right'].set_visible(False)
-    axs[0].spines['top'].set_visible(False)
-    
-    # plots amplitude data
-    axs[1].boxplot([data_avg['0']['amp'],data_avg['1']['amp']],widths=.6)
-    axs[1].set_aspect(.6)
-    axs[1].set_xticklabels(target_labels)
-    axs[1].set_ylabel('amplitude (mV)')
-    axs[1].spines['right'].set_visible(False)
-    axs[1].spines['top'].set_visible(False)
-'''
 

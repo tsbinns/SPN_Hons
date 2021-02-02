@@ -47,11 +47,11 @@ specs = {'dspn': {
 
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
-cell_type = 'dspn'
+cell_type = 'ispn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
-model_iterator = list(range(1)) # use model_iterator = range(specs[cell_type]['N']) for all models
+model_iterator = list(range(specs[cell_type]['N'])) # use model_iterator = range(specs[cell_type]['N']) for all models
 # for dspn, 10 has lowest rheo, 54 has highest, 22 has mean, 41 has median; 22 is also average for experimental value
 # for ispn, 8 has mean and median; 1 is average for experimental value
 
