@@ -95,12 +95,14 @@ def dpp_validation(model_data,
     return data
 
 
+        
 
 def dpp_generation(model_data,
                    cell_index,
                    run_info,
                    noise = True,
                    HFI = False,
+                   HFI_delay = 0,
                    dur_and_amp = True):
     '''
     Provides clustered glutamatergic input to SPNs to generate the dendritic 
@@ -133,15 +135,28 @@ def dpp_generation(model_data,
           run_info['curr_n']+1,run_info['tot_n']),flush = True)
     
     
-    # ===== gets clustered input targets =====
+    # ===== gets stimulation info =====
+    # clustered inputs
     clus_info = cf.params_for_input(model_data['cell_type'], 'clustered')
     clus_params = clus_info['clustered']['params']
     
+    # noise inputs
+    if noise:
+        noise_info = cf.params_for_input(model_data['cell_type'], 'noise')
+        noise_params = noise_info['noise']['params']
+    
+    # HFIs
+    if HFI:
+        HFI_info = cf.params_for_input(model_data['cell_type'], 'HFI')
+        HFI_params = HFI_info['noise']['params']
+        
     # ===== simulation =====
     data = {}
+    
     for i, tar in enumerate(clus_info['clustered']['target']): # for each simulation target
         
         clus_lab = clus_info['clustered']['label'][i] # label for input target
+        
         
         # initiate cell
         cell = build.MSN(params=model_data['specs']['par'],
@@ -149,40 +164,64 @@ def dpp_generation(model_data,
                          variables=model_data['model_sets'][cell_index]['variables'])
         rheobase = model_data['model_sets'][cell_index]['rheobase']
         
+        
         # record vectors
         tm = h.Vector()
         tm.record(h._ref_t)
         vm = h.Vector()
         vm.record(cell.soma(0.5)._ref_v)
         
+        
         # add clustered inputs
         clus_syn, clus_stim, clus_ncon, clus_d2soma = cf.set_clustered_stim(cell, tar ,n=clus_params['stim_n'],
             act_time=clus_params['stim_t'], ISI=clus_params['isi'])
         
+        
         # add background noise
         if noise:
-            noise_syn, noise_stim, noise_ncon = cf.set_noise(cell)
+            noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
+                n_glut=noise_params['n_glut'], n_gaba=noise_params['n_gaba'], only_dend=noise_params['only dend'],
+                glut_delay=noise_params['stim_t'], gaba_delay=noise_params['stim_t'])
+
         
         # add high-frequency inputs
         if HFI:
-            raise ValueError('nope')
+            # excludes axon, soma, and the clustered input site from receiving input
+            exclude = []
+            for sec in cell.allseclist:
+                if 'axon' in sec.name() and HFI_params['exclude_axon']:
+                    exclude.append(sec.name())
+                if 'soma' in sec.name() and HFI_params['exclude_soma']:
+                    exclude.append(sec.name())
+                if sec.name() == tar and HFI_params['exclude_clus_sites']:
+                    exclude.append(sec.name())
+            # adds HFI
+            HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
+                delay=clus_params['stim_t']+HFI_delay, exclude=exclude)
+            # collates data
+            data['HFI'] = arrangement
+        
         
         # run simulation
         h.finitialize(-80)
-        while h.t < clus_params['stop_t']:
+        while h.t < clus_params['stop_t']+HFI_delay:
             h.fadvance()
         tm = tm.to_python()
         vm = vm.to_python()
         
-        # collate data
-        data[clus_lab] = {'tm':tm, 'vm':vm, 'rheo':rheobase, 'id':int(cell_index), 
-            'cell_type':model_data['cell_type']}
         
+        # collate data
+        data[clus_lab] = {'vm':vm}
+        data['meta'] = {'id':int(cell_index), 'round':run_info['round'], 'cell_type':model_data['cell_type'], 'tm':tm, 'rheo':rheobase}
+        
+        
+        # calculate dpp duration and amplitude
         if dur_and_amp:
-            # calculate dpp duration and amplitude
-            base_t = tm.index(min(tm, key=lambda x:abs(x-clus_params['stim_t'])))-1
-            data[clus_lab]['dur'] = cf.dpp_dur(tm, vm, vm[base_t], clus_params['stim_t'])
-            data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, vm[base_t], clus_params['stim_t'])
+            base_t_start = tm.index(min(tm, key=lambda x:abs(x-(clus_params['stim_t']+clus_params['pre_t']))))
+            base_t_end = tm.index(min(tm, key=lambda x:abs(x-clus_params['stim_t'])))
+            base_vm = np.mean(vm[base_t_start:base_t_end])
+            data[clus_lab]['dur'] = cf.dpp_dur(tm, vm, base_vm, clus_params['stim_t'])
+            data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
             
         
     return data

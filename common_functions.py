@@ -10,6 +10,7 @@ import os, shutil
 import pickle
 import json, codecs
 import random
+import time
 
 
 
@@ -38,6 +39,112 @@ def exclude_at_start(tm, vm, time):
     return tm[exclude_idx:], vm[exclude_idx:]
 
 
+
+
+def get_dists(cell,
+              other_origin = None,
+              origin_x = .5,
+              sec_type = ['soma','dend','axon'],
+              sec_x = .5,
+              only_sec = None):
+    '''
+    Gets the distance from the cell sections to the desired origin (in 
+    micrometers).
+    
+    INPUT(S):
+        - cell: cell model to analyse [MSN object]
+        - other_origin: cell section to take distance to. If None, soma[0] is 
+            taken as the origin. To specify and alternative origin, pass a cell 
+            section (e.g. cell.dend[0]) [MSN object section]
+        - origin_x: part of the origin section to take distance to; middle of 
+            the section by default [number [0,1]]
+        - sec_type: type(s) of section(s) to get the distance for (all section 
+            types by default) [list of strings]. If 'only_sec' given, 
+            'sec_type' is ignored
+        - only_sec: specific section(s) to get the distance for [list of str].
+            If given, 'sec_type' is ignored
+        - origin_x: part of the section to take distance from; middle of the 
+            section by default [number [0,1]]
+                    
+    OUTPUT(S):
+        - dists: information for each requested section containing a list of 
+            distances to the origin [dict]
+    
+    Thomas Binns (author), 29/01/21
+    '''
+    
+    # ===== sets the origin =====
+    if other_origin:
+        origin = other_origin
+    else:
+        origin = cell.soma
+    
+    dists = {}
+    
+    if only_sec:
+        # ===== gets the distances to the origin =====
+        for secs in only_sec:
+            for sec in cell.allseclist:
+                 if sec.name() == secs:
+                     dists[secs] = int(h.distance(origin(origin_x),sec(sec_x)))
+        
+    else:
+        # ===== checks that correct sec_types given =====
+        for types in sec_type:
+            if types != 'soma' and types != 'dend' and types != 'axon':
+                raise ValueError("The specified section type(s) is not recognised.\nThis should be a list containing 'soma' and/or 'dend' and/or 'axon'.")            
+        
+        # ===== gets the distances to the origin =====
+        for types in sec_type:
+            dists[types] = []
+            for sec in cell.allseclist:
+                if sec.name()[:4] == types:
+                    dists[types].append(int(h.distance(origin(origin_x),sec(sec_x))))
+        
+        
+    return dists
+
+
+
+
+
+def HF_input_arrangement(cell, exclude=[], n_inputs=20):
+    '''
+    Chooses which cell sections to provide high-frequency input to.
+    
+    INPUT(S):
+        - cell: cell to provide input to [MSN object]
+        - exclude: sections of the cell not to be targeted [list of str(s)]
+        - n_inputs: number of inputs to provide the cell [int]
+        
+    OUTPUT(S):
+        - arrangement: dictionary containing the names of sections to stimulate and the
+            distances of these sections to the soma [dict]
+    
+    Thomas Binns (author), 02/02/21
+    '''
+    
+    # ===== gets cell sections and excludes sections, if applicable =====
+    all_secs = []
+    for sec in cell.allseclist:
+        if sec.name() not in exclude:
+            all_secs.append(sec.name())
+    
+    
+    # ===== chooses sections to receive input =====
+    arrangement = {}
+        
+    # chooses sections
+    sample_idxs = random.sample(range(len(all_secs)), n_inputs)
+    arrangement['targets'] = [all_secs[x] for x in sample_idxs]
+    
+    # gets distance info
+    dists = get_dists(cell, only_sec=arrangement['targets'])
+    arrangement['dists'] = [x for x in dists.values()]
+    arrangement['mean dist'] = sum(arrangement['dists']) / len(arrangement['dists'])
+        
+        
+    return arrangement
 
 
 
@@ -574,6 +681,7 @@ def random_synapse(ns, nc, Syn, sec, x,         \
     ns[key].interval    = NS_interval # mean interval between two spikes in ms
     ns[key].noise       = NS_noise
     ns[key].number      = NS_number
+    #ns[key].noiseFromRandom()
     if seed == 'no_seed': pass
     elif seed:  ns[key].seed( seed     )
     else:       ns[key].seed( len(Syn) )
@@ -719,51 +827,136 @@ def set_noise(cell,
               n_glut = 400,
               n_gaba = 100,
               only_dend = True,
-              delays=[]          ):
+              glut_x = [],
+              gaba_x = [],
+              glut_delay = 0,
+              gaba_delay = 0):
     '''
+    Sets background noise of glutamatergic and GABAergic inputs to the cell.
     
+    INPUT(S):
+        - cell: cell to stimulate [MSN object]
+        - freq_glut: frequency (in Hz) at which the glutamatergic inputs should activate [number]
+        - freq_gaba: frequency (in Hz) at which the GABAergic inputs should activate [number]
+        - n_glut: number of glutamatergic inputs to provide [int]
+        - n_gaba: number of GABAergic inputs to provide [int]
+        - only_dend: whether input should only be provided to dendrites [bool]
+        - glut_x: where on the cell section the glutamatergic input should be provided to. If blank, the positions are
+            randomly assigned for each input [number [0, 1]]
+        - gaba_x: where on the cell section the GABAergic input should be provided to. If blank, the positions are
+            randomly assigned for each input [number [0, 1]]
+        - glut_delay: the time (in ms) from the start of the simulations at which the glutamatergic inputs 
+            should be activated [number]
+        - gaba_delay: the time (in ms) from the start of the simulations at which the GABAergic inputs 
+            should be activated [number]
+    
+    OUTPUT(S):
+        - Syn: dictionary of synapses [dict]
+        - ns: dictionary of NetStim objects [dict]
+        - nc: dictionary of NetCon objects [dict]
     
     Thomas Binns (modified), 02/02/21
     '''
     
+    # ===== gets cell sections =====
     if only_dend:
-        compartments = cell.dendlist
+        sections = cell.dendlist
     else:
-        compartments = cell.allseclist
+        sections = cell.allseclist
+    secs = []
+    for sec in sections:
+        secs.append(sec.name())
+     
+        
+    # ===== gets cell sections to stimulate =====
+    # glutamatergic input
+    glut_inputs = {}
+    glut_inputs['targets'] = [random.randint(0,len(secs)-1) for x in range(n_glut)]
+    if glut_x:
+        glut_inputs['x'] = [glut_x for x in range(n_glut)]
+    else:
+        glut_inputs['x'] = [random.uniform(0,1) for x in range(n_glut)]
     
+    # GABAergic input
+    gaba_inputs = {}
+    gaba_inputs['targets'] = [random.randint(0,len(secs)-1) for x in range(n_gaba)]
+    if gaba_x:
+        gaba_inputs['x'] = [gaba_x for x in range(n_gaba)]
+    else:
+        gaba_inputs['x'] = [random.uniform(0,1) for x in range(n_gaba)]
+    
+    
+    # ===== sets up objects =====
     ns      = {}
     nc      = {}
     Syn     = {}
     
     gbase = 0.2e-3
     
-    for s, sec in enumerate(compartments):
+    
+    # ===== adds inputs =====
+    # adds glutamatergic inputs
+    for i, tar in enumerate(glut_inputs['targets']):
         
-        # set bg noise----------------------------------
-        
-        if len(delays) == 0:
-            delay = 0
-        else:
-            delay = delays[s]
+        for sec in sections:
+            if sec.name() == secs[tar]:
+                random_synapse(ns, nc, Syn, sec, glut_inputs['x'][i],
+                               NS_interval = 1000/freq_glut, NC_conductance = gbase,
+                               NS_start = glut_delay, seed = time.time()) #None
+                Syn[sec.name()+'_glut'].ratio = 1.0
+                break
             
-        # create a glut synapse (glutamate)
-        random_synapse(ns, nc, Syn, sec, 0.5,
-                                NS_interval = 1000/freq_glut,
-                                NC_conductance = gbase,
-                                NS_start = delay,
-                                seed = None)
-        # create a gaba synapse (Exp2Syn)
-        random_synapse(ns, nc, Syn, sec, 0.1,
-                                Type = 'gaba',
-                                NS_interval = 1000/freq_gaba,
-                                NC_conductance = gbase*5,
-                                NS_start = delay,
-                                seed=None)
+    # adds GABAergic inputs
+    for i, tar in enumerate(gaba_inputs['targets']):
         
-        Syn[sec.name()+'_glut'].ratio = 1.0
+        for sec in sections:
+            if sec.name() == secs[tar]:
+                random_synapse(ns, nc, Syn, sec, gaba_inputs['x'][i],
+                               NS_interval = 1000/freq_gaba, NC_conductance = gbase*5,
+                               NS_start = gaba_delay, seed = time.time())                
+                break
         
     
     return Syn, ns, nc
+
+
+
+
+def set_HFI(cell,
+            freq = 10,
+            n_inputs = 20,
+            delay = 0,
+            exclude = []):
+    '''
+    
+    Thomas Binns (author), 03/02/21
+    '''
+    
+    # ===== sets up objects =====
+    ns      = {}
+    nc      = {}
+    Syn     = {}
+    
+    gbase = 0.2e-3
+    
+    
+    # ===== gets the HFI arrangement =====
+    arrangement = HF_input_arrangement(cell, exclude=exclude, n_inputs=n_inputs)
+    
+    
+    # ===== adds inputs =====
+    for i, tar in enumerate(arrangement['targets']):
+        for sec in cell.allseclist:
+            if sec.name() == tar:
+                random_synapse(ns, nc, Syn, sec, random.uniform(0,1),
+                               NS_interval = 1000/freq, NC_conductance = gbase,
+                               NS_start = delay, seed = None)
+                Syn[sec.name()+'_glut'].ratio = 1.0
+            break 
+        
+        
+    return Syn, ns, nc, arrangement
+
 
 
 
@@ -2159,8 +2352,8 @@ def params_for_input(cell_type, input_type):
     '''
     
     # ===== checks for correct input and cell types =====
-    if input_type != 'clustered' and input_type != 'stim' and input_type != 'ACh':
-        raise ValueError("The input type {} is not recognised.\nThis should be 'clustered', 'stim', or 'ACh'.".format(input_type))
+    if input_type != 'clustered' and input_type != 'HFI' and input_type != 'ACh' and input_type != 'noise':
+        raise ValueError("The input type {} is not recognised.\nThis should be 'clustered', 'HFI', 'noise', or 'ACh'.".format(input_type))
         
     if cell_type != 'dspn' and cell_type != 'ispn':
         raise ValueError("The cell type {} is not recognised.\nThis should be 'dspn' or 'ispn'.".format(cell_type))
@@ -2174,16 +2367,12 @@ def params_for_input(cell_type, input_type):
     info['clustered']['params'] = {'stim_n':16, 'stim_t':100, 'isi':1, \
                                    'pre_t':-50}
     info['clustered']['params']['stop_t'] = info['clustered']['params'] \
-                                            ['stim_t'] + 250
+                                            ['stim_t'] + 200
     
     
     # ===== cell type-specific info =====
     if cell_type == 'dspn':
         info['clustered']['target'] = ['dend[49]','dend[51]']    
-        
-        if input_type == 'stim':
-            # info['stim'] = {}
-            raise ValueError('The specified input_type is not yet supported')
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
@@ -2192,10 +2381,6 @@ def params_for_input(cell_type, input_type):
         
     else:
         info['clustered']['target'] = ['dend[12]','dend[17]']
-        
-        if input_type == 'stim':
-            # info['stim'] = []
-            raise ValueError('The specified input_type is not yet supported')
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
@@ -2208,124 +2393,20 @@ def params_for_input(cell_type, input_type):
         info['ACh']['params'] = {'stim_t':info['clustered']['params'] \
                                           ['stim_t'] - 1, \
                                  'stop_t':info['clustered']['params']['stop_t']}
-    elif input_type == 'stim':
-        # info['stim'] = []
-        raise ValueError('The specified input_type is not yet supported')
+        
+    elif input_type == 'HFI':
+        info['HFI'] = {}
+        info['HFI']['params'] = {'freq':10, 'n_inputs':20, 'exclude_clus_sites':1, 'exclude_soma':1, 'exclude_axon':1}
+        
+    elif input_type == 'noise':
+        info['noise'] = {}
+        info['noise']['params'] = {'freq_glut':1, 'freq_gaba':.5, 'n_glut':400, 'n_gaba':100, 'only dend':1,
+                                   'stim_t':0, 'stop_t':info['clustered']['params']['stop_t']}
+        
         
         
     return info
-        
-    
-            
 
-
-def get_dists(cell,
-              other_origin = None,
-              origin_x = .5,
-              sec_type = ['soma','dend','axon'],
-              sec_x = .5,
-              only_sec = None):
-    '''
-    Gets the distance from the cell sections to the desired origin (in 
-    micrometers).
-    
-    INPUT(S):
-        - cell: cell model to analyse [MSN object]
-        - other_origin: cell section to take distance to. If None, soma[0] is 
-            taken as the origin. To specify and alternative origin, pass a cell 
-            section (e.g. cell.dend[0]) [MSN object section]
-        - origin_x: part of the origin section to take distance to; middle of 
-            the section by default [number [0,1]]
-        - sec_type: type(s) of section(s) to get the distance for (all section 
-            types by default) [list of strings]. If 'only_sec' given, 
-            'sec_type' is ignored
-        - only_sec: specific section(s) to get the distance for [list of str].
-            If given, 'sec_type' is ignored
-        - origin_x: part of the section to take distance from; middle of the 
-            section by default [number [0,1]]
-                    
-    OUTPUT(S):
-        - dists: information for each requested section containing a list of 
-            distances to the origin [dict]
-    
-    Thomas Binns (author), 29/01/21
-    '''
-    
-    # ===== sets the origin =====
-    if other_origin:
-        origin = other_origin
-    else:
-        origin = cell.soma
-    
-    dists = {}
-    
-    if only_sec:
-        # ===== gets the distances to the origin =====
-        for secs in only_sec:
-            for sec in cell.allseclist:
-                 if sec.name() == secs:
-                     dists[secs] = int(h.distance(origin(origin_x),sec(sec_x)))
-        
-    else:
-        # ===== checks that correct sec_types given =====
-        for types in sec_type:
-            if types != 'soma' and types != 'dend' and types != 'axon':
-                raise ValueError("The specified section type(s) is not recognised.\nThis should be a list containing 'soma' and/or 'dend' and/or 'axon'.")            
-        
-        # ===== gets the distances to the origin =====
-        for types in sec_type:
-            dists[types] = []
-            for sec in cell.allseclist:
-                if sec.name()[:4] == types:
-                    dists[types].append(int(h.distance(origin(origin_x),sec(sec_x))))
-        
-        
-    return dists
-
-
-
-
-
-def HF_input_arrangement(cell, exclude=[], n_inputs=20, n_to_gen=1):
-    '''
-    Chooses which cell sections to provide high-frequency input to.
-    
-    INPUT(S):
-        - cell: cell to provide input to [MSN object]
-        - exclude: sections of the cell not to be targeted [list of str(s)]
-        - n_inputs: number of inputs to provide the cell [int]
-        - n_to_gen: number of arrangements to generate [int]
-        
-    OUTPUT(S):
-        - arrangement: n_to_gen-long dictionary containing the names of sections to stimulate and the
-            distances of these sections to the soma [dict]
-    
-    Thomas Binns (author), 02/02/21
-    '''
-    
-    # ===== gets cell sections and excludes sections, if applicable =====
-    all_secs = []
-    for sec in cell.allseclist:
-        if sec.name() not in exclude:
-            all_secs.append(sec.name())
-    
-    
-    # ===== chooses sections to receive input =====
-    arrangement = {}
-    for i in range(n_to_gen):
-        arrangement[i] = {}
-        
-        # chooses sections
-        sample_idxs = random.sample(range(len(all_secs)), n_inputs)
-        arrangement[i]['targets'] = [all_secs[x] for x in sample_idxs]
-        
-        # gets distance info
-        dists = get_dists(cell, only_sec=arrangement[i]['targets'])
-        arrangement[i]['dists'] = [x for x in dists.values()]
-        arrangement[i]['mean dist'] = sum(arrangement[i]['dists']) / len(arrangement[i]['dists'])
-        
-        
-    return arrangement
 
 
 

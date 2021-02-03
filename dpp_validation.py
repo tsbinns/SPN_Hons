@@ -124,7 +124,7 @@ print('Simulations completed (took %.0f secs).\nNow performing calculations/coll
 
 
 
-# =====combine and/or average data =====
+# ===== combine and/or average data =====
 
 data_avg = {}
 
