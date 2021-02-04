@@ -1242,8 +1242,7 @@ def draw_factors_ACh(cell_type, \
     
     if mode == 'random':
         for channel in modulate:
-            mod_vals[channel] = np.random.uniform(ranges[channel][0], \
-                                ranges[channel][1])
+            mod_vals[channel] = np.random.uniform(ranges[channel][0],ranges[channel][1])
     
     else:
         for channel in modulate:
@@ -2284,13 +2283,25 @@ def iter_params(cell_type, only_ids=False):
     '''
     
     if cell_type == 'dspn':
+        '''
         chosen_iters = {'ids': [19, 47, 65, 38, 61, 39, 7, 29, 68, 57],
                         'rheos': [387, 297, 399, 322, 362, 341, 318, 320, 380, 390],
                         'mean': 351.6, 'min': 297, 'max': 399}
+        '''
+        chosen_iters = {'ids':[56, 23, 1, 44, 33, 57, 31, 28, 9, 66, 0, 16, 14, 47, 39, 68, 11, 36, 25, 62],
+                        'rheos':[278, 359, 360, 361, 323, 390, 355, 297, 382, 394, 383, 338, 401, 297, 341, 380, 359, 302, 343, 376],
+                        'mean':350.95, 'min':278, 'max':401}
+        
     elif cell_type == 'ispn':
+        '''
         chosen_iters = {'ids': [16, 2, 9, 5, 23, 3, 17, 26, 30, 31],
                         'rheos': [320, 199, 281, 355, 356, 253, 362, 330, 238, 296],
                         'mean': 299.0, 'min': 199, 'max': 362}
+        '''
+        chosen_iters = {'ids':[11, 24, 22, 12, 0, 10, 29, 6, 18, 16, 23, 19, 31, 25, 4, 27, 28, 21, 9, 7],
+                        'rheos':[292, 357, 296, 302, 318, 298, 338, 280, 356, 320, 356, 240, 296, 298, 338, 223, 295, 339, 281, 336],
+                        'mean':307.95, 'min':223, 'max':357}
+        
     else:
         raise ValueError("The cell type {} is not recognised.\nThis should be 'dspn' or 'ispn'.".format(cell_type))
         
@@ -2387,8 +2398,8 @@ def params_for_input(cell_type, input_type):
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
-            info['ACh']['target'] = ['dend[48]','soma[0]']
-            info['ACh']['label'] = ['off-site','soma']
+            info['ACh']['target'] = ['dend[48]','soma[0]','axon[0]']
+            info['ACh']['label'] = ['off-site','soma','axon']
             
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
@@ -2399,8 +2410,8 @@ def params_for_input(cell_type, input_type):
             
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
-            info['ACh']['target'] = ['dend[8]','soma[0]']
-            info['ACh']['label'] = ['off-site','soma']
+            info['ACh']['target'] = ['dend[8]','soma[0]','axon[0]']
+            info['ACh']['label'] = ['off-site','soma','axon']
         
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
@@ -2409,16 +2420,15 @@ def params_for_input(cell_type, input_type):
     
     # ===== stimulation type-specific info =====
     if input_type == 'ACh':
-        info['ACh']['params'] = {'stim_t':info['clustered']['params'] \
-                                          ['stim_t'] - 1, \
+        info['ACh']['params'] = {'stim_t':info['clustered']['params']['stim_t'],
                                  'stop_t':info['clustered']['params']['stop_t']}
         
     elif input_type == 'HFI':
-        info['HFI']['params'] = {'freq':25, 'n_inputs':40}
+        info['HFI']['params'] = {'freq':30, 'n_inputs':40}
         
     elif input_type == 'noise':
         info['noise'] = {}
-        info['noise']['params'] = {'freq_glut':6, 'freq_gaba':3, 'n_glut':400, 'n_gaba':100, 'only dend':1,
+        info['noise']['params'] = {'freq_glut':4, 'freq_gaba':2, 'n_glut':400, 'n_gaba':100, 'only dend':1,
                                    'stim_t':0, 'stop_t':info['clustered']['params']['stop_t']}
         
         

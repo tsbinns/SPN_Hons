@@ -230,6 +230,178 @@ def dpp_generation(model_data,
 
 
 
+
+def dpp_ACh_modded(model_data,
+                   cell_index,
+                   run_info,
+                   noise = True,
+                   HFI = False,
+                   HFI_delay = 0,
+                   dur_and_amp = True,
+                   spike = False):
+    '''
+    Provides clustered glutamatergic input to SPNs to generate the dendritic 
+    plateau potential in the absence of modulation.
+    
+    INPUT(S):
+        - model_data: model paramaters (specification, cell type, model 
+            sets, and stimulation targets) [dict]
+        - stim_data: stimulation parameters (number of inputs, time of inputs,
+            input inter-spike intervals, time to stop simulating) [dict]
+        - cell_index: cell specification being simulated [int]
+        - run_info: information about the simulation run (this simulation and 
+            total number of simulations) [dict]
+        - dur_and_amp: whether to calculate the duration and peak amplitude of
+            the plateau potential (default True) [bool]
+        
+    OUTPUT(S):
+        - data: simulated data including: simulation times; simulated voltages;
+            distance of stimulated target to the soma; rheobase of the model; 
+            half-max width of the potential; peak amplitude of the potential;
+            cell specification being simulated; cell type being simulated
+            [dict]
+        - ncon: NetCon object
+            
+    Thomas Binns (author), 26/01/21
+    '''
+    
+    # ===== print simulation info to monitor progress =====
+    print('Simulating cell specification {} of {}'.format( \
+          run_info['curr_n']+1,run_info['tot_n']),flush = True)
+    
+    
+    # ===== gets stimulation info =====
+    # clustered inputs
+    clus_info = cf.params_for_input(model_data['cell_type'], 'clustered')
+    clus_params = clus_info['clustered']['params']
+    
+    
+    # modulation inputs
+    mod_factors = cf.draw_factors_ACh(model_data['cell_type'], mode='random')
+    ACh_info = cf.params_for_input(model_data['cell_type'], 'ACh')
+    ACh_params = ACh_info['ACh']['params']
+    
+    # gets vector for modulation timing
+    state = [1 if ht >= ACh_params['stim_t'] and ht <= ACh_params['stop_t'] \
+             else 0 for ht in np.arange(0,clus_params['stop_t'],h.dt)]
+    if 'kaf' in mod_factors:
+        kaf_state = [x * mod_factors['kaf'] for x in state]
+        kaf_state = h.Vector(kaf_state)
+    state = h.Vector(state)
+    
+    # collates time-dependent mechanism modulation scaling
+    mech_scale = {}
+    for key in mod_factors:
+        if key == 'kaf':
+            mech_scale[key] = kaf_state
+        else:
+            mech_scale[key] = state
+    
+    
+    # noise inputs
+    if noise:
+        noise_info = cf.params_for_input(model_data['cell_type'], 'noise')
+        noise_params = noise_info['noise']['params']
+    
+    # HFIs
+    if HFI:
+        HFI_info = cf.params_for_input(model_data['cell_type'], 'HFI')
+        HFI_params = HFI_info['HFI']['params']
+        
+    # ===== simulation =====
+    data = {}
+    
+    for i, clus_tar in enumerate(clus_info['clustered']['target']): # for each simulation target
+        
+        clus_lab = clus_info['clustered']['label'][i] # label for input target
+        
+        # get the targets for cholinergic input
+        ACh_targets = {}
+        ACh_targets['target'] = [clus_tar]
+        ACh_targets['label'] = [clus_lab]
+        for j, ACh_t in enumerate(ACh_info['ACh']['target']):
+            ACh_targets['target'].append(ACh_t)
+            ACh_targets['label'].append(ACh_info['ACh']['label'][j])
+        
+        for j, ACh_t in enumerate(ACh_targets['target']): # for each cholinergic input target
+            
+            ACh_lab = ACh_targets['label'][j]
+            
+            # initiate cell
+            cell = build.MSN(params=model_data['specs']['par'],
+                             morphology=model_data['specs']['morph'],
+                             variables=model_data['model_sets'][cell_index]['variables'])
+            rheobase = model_data['model_sets'][cell_index]['rheobase']
+            
+            
+            # record vectors
+            tm = h.Vector()
+            tm.record(h._ref_t)
+            vm = h.Vector()
+            vm.record(cell.soma(0.5)._ref_v)
+            
+            
+            # add clustered inputs
+            clus_syn, clus_stim, clus_ncon, clus_d2soma = cf.set_clustered_stim(cell, clus_tar ,n=clus_params['stim_n'],
+                act_time=clus_params['stim_t'], ISI=clus_params['isi'])
+            
+            # add background noise
+            if noise:
+                noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, model_data['cell_type'], 
+                    freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
+                    n_glut=noise_params['n_glut'], n_gaba=noise_params['n_gaba'], only_dend=noise_params['only dend'],
+                    glut_delay=noise_params['stim_t'], gaba_delay=noise_params['stim_t'])
+    
+            
+            # add high-frequency inputs
+            if HFI:
+                # adds HFI
+                HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, model_data['cell_type'], 
+                    freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
+                    delay=clus_params['stim_t']+HFI_delay, exclude=HFI_info['HFI']['exclude'])
+                # collates data
+                data['HFI'] = arrangement
+            
+            # get cholinergic modulation class
+            modulation = modulate.set_ACh(cell, mod_factors, [ACh_t], target_x=.5, play=mech_scale, dt=h.dt)
+            
+            # run simulation
+            h.finitialize(-80)
+            while h.t < clus_params['stop_t']+HFI_delay:
+                h.fadvance()
+            tm = tm.to_python()
+            vm = vm.to_python()
+            
+            
+            # collate data
+            data[clus_lab][ACh_lab] = {'vm':vm}
+            data['meta'] = {'id':int(cell_index), 'round':run_info['round'], 'cell_type':model_data['cell_type'], 'tm':tm, 
+                            'rheo':rheobase}
+            
+            
+            # calculate dpp duration and amplitude
+            if dur_and_amp:
+                base_t_start = tm.index(min(tm, key=lambda x:abs(x-(clus_params['stim_t']+clus_params['pre_t']))))
+                base_t_end = tm.index(min(tm, key=lambda x:abs(x-clus_params['stim_t'])))
+                base_vm = np.mean(vm[base_t_start:base_t_end])
+                data[clus_lab][ACh_lab]['dur'] = cf.dpp_dur(tm, vm, base_vm, clus_params['stim_t'])
+                data[clus_lab][ACh_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
+                
+            # check whether a spike occurred
+            if spike:
+                thresh = 0
+                data[clus_lab][ACh_lab]['spiked'] = 0
+                if max(vm) > thresh:
+                    data[clus_lab][ACh_lab]['spiked'] = 1
+            
+        
+    return data
+
+
+
+
+
+
 def ACh_modulation(model_data,
                    stim_data,
                    cell_index,

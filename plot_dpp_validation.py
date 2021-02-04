@@ -99,80 +99,100 @@ if not HFI:
 
 else:
     
-    # load data
-    data = cf.load_data('Data/dspn_HFI[1]+0_validation.json')
-    
-    
-    # plotting =================
-    
-    clus_info = data['meta']['clustered']
-    HFI_info = data['meta']['HFI']
-    
-    # simulation data
-    stim_n = clus_info['params']['stim_n']
-    stim_t = clus_info['params']['stim_t']
-    stop_t = clus_info['params']['stop_t']
-    pre_t = clus_info['params']['pre_t']
-    isi = clus_info['params']['isi']
-    cell_type = data['meta']['cell type']
-    targets = clus_info['target']
-    target_labels = clus_info['label']
-    model_iterator = data['meta']['iterations']
-    n_rounds = data['meta']['n rounds']
-    
-    
-    # plot voltage traces =====
-    
     colors = (plt.rcParams['axes.prop_cycle']).by_key()['color']
+    delta = [0, 20, 40, 60, 80, 100]
+    delta_labels = []
+    spiking = {'avg':{}, 'std':{}}
     
-    plt.figure()
-    plt.tight_layout(True)
-    axs = plt.subplot(111)
-    for i, lab in enumerate(target_labels):
-            
-        for j in range(len(data['meta']['iterations'])*data['meta']['n rounds']):
-            
-            if j == 1:
-                plt.plot(data['meta']['tm'],data['all'][lab]['vm'][j], color=colors[i], label=lab)
-            else:
-                plt.plot(data['meta']['tm'],data['all'][lab]['vm'][j], color=colors[i])
+    for r in range(len(delta)):
         
-    plt.legend()
-    plt.show()
-    
-    plt.xlabel('time (ms)')
-    plt.ylabel('membrane potential (mV)')
-    plt.title(cell_type)
-    axs.spines['right'].set_visible(False)
-    axs.spines['top'].set_visible(False)
-    
-    # underscore area of clustered stimulation
-    axs.plot([stim_t,stim_t+stim_n*isi],[plt.ylim()[0],plt.ylim()[0]], \
-             linewidth=5,color='black',solid_capstyle='butt')
-    
-    # underscore area of HFI
-    axs.plot([HFI_info['stim_t'],HFI_info['stop_t']],[plt.ylim()[0],plt.ylim()[0]], \
-             linewidth=5,color='grey',solid_capstyle='butt')
-    
-    # ignores data at start of simulation before voltage reaches baseline
-    plt.xlim(stim_t+pre_t, stop_t)
-    plt.xticks(ticks=np.arange(stim_t+pre_t, stop_t+1, step=50), \
-               labels=np.arange(pre_t, stop_t+pre_t+1, step=50))
+        # load data
+        data = cf.load_data('Data/dspn_HFI[1]+{}_validation.json'.format(delta[r]))
+
+        delta_labels.append('+{}'.format(delta[r]))
+        
+        # plotting =================
+        
+        clus_info = data['meta']['clustered']
+        HFI_info = data['meta']['HFI']
+        
+        # simulation data
+        stim_n = clus_info['params']['stim_n']
+        stim_t = clus_info['params']['stim_t']
+        stop_t = clus_info['params']['stop_t']
+        pre_t = clus_info['params']['pre_t']
+        isi = clus_info['params']['isi']
+        cell_type = data['meta']['cell type']
+        targets = clus_info['target']
+        target_labels = clus_info['label']
+        model_iterator = data['meta']['iterations']
+        n_rounds = data['meta']['n rounds']
+        
+        
+        # plot voltage traces =====
+        
+        fig, axs = plt.subplots(2,1)
+        fig.suptitle(cell_type)
+        for i, lab in enumerate(target_labels):
+            
+            # avg firing probability at each time point
+            if r == 0:
+                spiking['avg'][lab] = []
+            spiking['avg'][lab].append(np.mean(data['all'][lab]['spiked']))
+            
+            # std dev of firing probability at each time point
+            if r == 0:
+                spiking['std'][lab] = []
+            spiking['std'][lab].append(np.std(data['all'][lab]['spiked']))
+                
+            for j in range(len(data['meta']['iterations'])*data['meta']['n rounds']):
+                if data['all'][lab]['spiked'][j] == 1:
+                    col = colors[i]
+                else:
+                    col = 'grey'
+                axs[i].plot(data['meta']['tm'],data['all'][lab]['vm'][j], color=col)
+         
+        for i, lab in enumerate(target_labels):
+            
+            axs[i].set_xlabel('time (ms)')
+            axs[i].set_ylabel('membrane potential (mV)')
+            axs[i].set_title(lab)
+            axs[i].spines['right'].set_visible(False)
+            axs[i].spines['top'].set_visible(False)
+            
+            # underscore area of clustered stimulation
+            axs[i].plot([stim_t,stim_t+stim_n*isi],[plt.ylim()[0],plt.ylim()[0]], \
+                     linewidth=5,color='black',solid_capstyle='butt')
+            
+            # underscore area of HFI
+            axs[i].plot([HFI_info['stim_t'],HFI_info['stop_t']],[plt.ylim()[0],plt.ylim()[0]], \
+                     linewidth=5,color='grey',solid_capstyle='butt')
+            
+            # ignores data at start of simulation before voltage reaches baseline
+            axs[i].set_xlim(stim_t+pre_t, stop_t+delta[r])
+            axs[i].set_xticks(np.arange(stim_t+pre_t, stop_t+1, step=50))
+            axs[i].set_xticklabels(np.arange(pre_t, stop_t-stim_t+1, step=50))
+            
+        plt.tight_layout(True)
+            
     
     # plot duration and amplitude data =====
     if len(model_iterator) > 1 or n_rounds > 1:
         
         plt.figure()
-        plt.tight_layout(True)
         axs = plt.subplot(111)
         
         # plots spike probability data
-        axs.boxplot([data['all'][target_labels[0]]['spiked'],data['all'][target_labels[1]]['spiked']],widths=.6)
-        axs.set_xticklabels(target_labels)
+        for i, lab in enumerate(target_labels):
+            axs.errorbar(delta, spiking['avg'][lab], yerr=spiking['std'][lab], color=colors[i], label=lab)
+            
+        axs.set_xticklabels([0]+delta_labels)
+        axs.set_xlabel('delta (ms)')
         axs.set_ylabel('spike probability')
         axs.spines['right'].set_visible(False)
         axs.spines['top'].set_visible(False)
         axs.set_ylim(0,1)
+        
         plt.tight_layout(True)
         
         
