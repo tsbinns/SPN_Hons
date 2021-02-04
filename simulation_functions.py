@@ -103,7 +103,8 @@ def dpp_generation(model_data,
                    noise = True,
                    HFI = False,
                    HFI_delay = 0,
-                   dur_and_amp = True):
+                   dur_and_amp = True,
+                   spike = False):
     '''
     Provides clustered glutamatergic input to SPNs to generate the dendritic 
     plateau potential in the absence of modulation.
@@ -148,7 +149,7 @@ def dpp_generation(model_data,
     # HFIs
     if HFI:
         HFI_info = cf.params_for_input(model_data['cell_type'], 'HFI')
-        HFI_params = HFI_info['noise']['params']
+        HFI_params = HFI_info['HFI']['params']
         
     # ===== simulation =====
     data = {}
@@ -176,28 +177,20 @@ def dpp_generation(model_data,
         clus_syn, clus_stim, clus_ncon, clus_d2soma = cf.set_clustered_stim(cell, tar ,n=clus_params['stim_n'],
             act_time=clus_params['stim_t'], ISI=clus_params['isi'])
         
-        
         # add background noise
         if noise:
-            noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
+            noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, model_data['cell_type'], 
+                freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
                 n_glut=noise_params['n_glut'], n_gaba=noise_params['n_gaba'], only_dend=noise_params['only dend'],
                 glut_delay=noise_params['stim_t'], gaba_delay=noise_params['stim_t'])
 
         
         # add high-frequency inputs
         if HFI:
-            # excludes axon, soma, and the clustered input site from receiving input
-            exclude = []
-            for sec in cell.allseclist:
-                if 'axon' in sec.name() and HFI_params['exclude_axon']:
-                    exclude.append(sec.name())
-                if 'soma' in sec.name() and HFI_params['exclude_soma']:
-                    exclude.append(sec.name())
-                if sec.name() == tar and HFI_params['exclude_clus_sites']:
-                    exclude.append(sec.name())
             # adds HFI
-            HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
-                delay=clus_params['stim_t']+HFI_delay, exclude=exclude)
+            HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, model_data['cell_type'], 
+                freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
+                delay=clus_params['stim_t']+HFI_delay, exclude=HFI_info['HFI']['exclude'])
             # collates data
             data['HFI'] = arrangement
         
@@ -212,7 +205,8 @@ def dpp_generation(model_data,
         
         # collate data
         data[clus_lab] = {'vm':vm}
-        data['meta'] = {'id':int(cell_index), 'round':run_info['round'], 'cell_type':model_data['cell_type'], 'tm':tm, 'rheo':rheobase}
+        data['meta'] = {'id':int(cell_index), 'round':run_info['round'], 'cell_type':model_data['cell_type'], 'tm':tm, 
+                        'rheo':rheobase}
         
         
         # calculate dpp duration and amplitude
@@ -222,6 +216,13 @@ def dpp_generation(model_data,
             base_vm = np.mean(vm[base_t_start:base_t_end])
             data[clus_lab]['dur'] = cf.dpp_dur(tm, vm, base_vm, clus_params['stim_t'])
             data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
+            
+        # check whether a spike occurred
+        if spike:
+            thresh = 0
+            data[clus_lab]['spiked'] = 0
+            if max(vm) > thresh:
+                data[clus_lab]['spiked'] = 1
             
         
     return data

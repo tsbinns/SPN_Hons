@@ -135,7 +135,8 @@ def HF_input_arrangement(cell, exclude=[], n_inputs=20):
     arrangement = {}
         
     # chooses sections
-    sample_idxs = random.sample(range(len(all_secs)), n_inputs)
+    sample_idxs = [random.randint(0,len(all_secs)-1) for r in range(n_inputs)]
+    #sample_idxs = random.sample(range(len(all_secs)), n_inputs)
     arrangement['targets'] = [all_secs[x] for x in sample_idxs]
     
     # gets distance info
@@ -822,6 +823,7 @@ def set_bg_noise(cell,              \
 
 
 def set_noise(cell,
+              cell_type,
               freq_glut = 1,
               freq_gaba = .5,
               n_glut = 400,
@@ -891,7 +893,12 @@ def set_noise(cell,
     nc      = {}
     Syn     = {}
     
-    gbase = 0.2e-3
+    if cell_type == 'dspn':
+        gbase = 0.3e-3
+    elif cell_type == 'ispn':
+        gbase = 0.2e-3
+    else:
+        raise ValueError('Cell type not recognised')
     
     
     # ===== adds inputs =====
@@ -923,6 +930,7 @@ def set_noise(cell,
 
 
 def set_HFI(cell,
+            cell_type,
             freq = 10,
             n_inputs = 20,
             delay = 0,
@@ -937,7 +945,12 @@ def set_HFI(cell,
     nc      = {}
     Syn     = {}
     
-    gbase = 0.2e-3
+    if cell_type == 'dspn':
+        gbase = 0.3e-3
+    elif cell_type == 'ispn':
+        gbase = 0.2e-3
+    else:
+        raise ValueError('Cell type not recognised')
     
     
     # ===== gets the HFI arrangement =====
@@ -950,9 +963,9 @@ def set_HFI(cell,
             if sec.name() == tar:
                 random_synapse(ns, nc, Syn, sec, random.uniform(0,1),
                                NS_interval = 1000/freq, NC_conductance = gbase,
-                               NS_start = delay, seed = None)
+                               NS_start = delay, seed = time.time())
                 Syn[sec.name()+'_glut'].ratio = 1.0
-            break 
+                break 
         
         
     return Syn, ns, nc, arrangement
@@ -2364,10 +2377,8 @@ def params_for_input(cell_type, input_type):
     
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
-    info['clustered']['params'] = {'stim_n':16, 'stim_t':100, 'isi':1, \
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':700, 'isi':1, \
                                    'pre_t':-50}
-    info['clustered']['params']['stop_t'] = info['clustered']['params'] \
-                                            ['stim_t'] + 200
     
     
     # ===== cell type-specific info =====
@@ -2378,6 +2389,10 @@ def params_for_input(cell_type, input_type):
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[48]','soma[0]']
             info['ACh']['label'] = ['off-site','soma']
+            
+        if input_type == 'HFI': # high-frequency input
+            info['HFI'] = {'exclude':['soma[0]','axon[0]']}
+            #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[49]','dend[50]','dend[51]','dend[52]','dend[53]']}
         
     else:
         info['clustered']['target'] = ['dend[12]','dend[17]']
@@ -2386,6 +2401,10 @@ def params_for_input(cell_type, input_type):
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[8]','soma[0]']
             info['ACh']['label'] = ['off-site','soma']
+        
+        if input_type == 'HFI': # high-frequency input
+            info['HFI'] = {'exclude':['soma[0]','axon[0]']}
+            #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[9]','dend[10]','dend[11]','dend[12]','dend[13]','dend[14]','dend[15]', 'dend[16]','dend[17]','dend[18]','dend[19]']}
     
     
     # ===== stimulation type-specific info =====
@@ -2395,12 +2414,11 @@ def params_for_input(cell_type, input_type):
                                  'stop_t':info['clustered']['params']['stop_t']}
         
     elif input_type == 'HFI':
-        info['HFI'] = {}
-        info['HFI']['params'] = {'freq':10, 'n_inputs':20, 'exclude_clus_sites':1, 'exclude_soma':1, 'exclude_axon':1}
+        info['HFI']['params'] = {'freq':25, 'n_inputs':40}
         
     elif input_type == 'noise':
         info['noise'] = {}
-        info['noise']['params'] = {'freq_glut':1, 'freq_gaba':.5, 'n_glut':400, 'n_gaba':100, 'only dend':1,
+        info['noise']['params'] = {'freq_glut':6, 'freq_gaba':3, 'n_glut':400, 'n_gaba':100, 'only dend':1,
                                    'stim_t':0, 'stop_t':info['clustered']['params']['stop_t']}
         
         

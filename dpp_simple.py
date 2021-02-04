@@ -46,11 +46,11 @@ if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
 model_iterator = cf.iter_params(cell_type, only_ids=True)
-#model_iterator = [0]
+#model_iterator = [0,1]
 
 iterations = model_iterator.copy()
 
-n_rounds = 10
+n_rounds = 1
 model_round = []
 for r in range(n_rounds):
     for i in range(len(iterations)):
@@ -72,9 +72,10 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
 noise = 1
-HFI = 0
+HFI = 1
 HFI_delay = 0
-dur_and_amp = 1
+dur_and_amp = 0
+spike = 1
 
 start = time.time() # for timing simulations
 
@@ -90,7 +91,7 @@ if pc.nhost() == 1: # use the serial form
         cell_index = model_iterator[cell_n]
         # simulate model
         run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
-        data = sf.dpp_generation(model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp)
+        data = sf.dpp_generation(model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         # save file to folder
         name = '{}_{}-{}_validation'.format(cell_type,data['meta']['round'], data['meta']['id'])
         cf.save_data(data,'{}/{}.json'.format(folder, name))
@@ -101,7 +102,7 @@ else: # use the bulleting board form
         cell_index = model_iterator[cell_n]
         # simulate model
         run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
-        pc.submit(sf.dpp_generation, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp)
+        pc.submit(sf.dpp_generation, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         
     while pc.working(): # gather results
         data = pc.pyret()
@@ -146,16 +147,18 @@ for i in range(len(iterations)):
     
     for lab in clus_info['label']:
         
-        data[i]['all'][lab] = {'vm':[], 'dur':[], 'amp':[]}
+        data[i]['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[]}
         
         for j in range(n_rounds):
             
             data[i]['all'][lab]['vm'].append(data[i][j][lab]['vm'])
             if dur_and_amp:
                 data[i]['all'][lab]['dur'].append(data[i][j][lab]['dur'])
-                data[i]['all'][lab]['amp'].append(data[i][j][lab]['amp'])   
+                data[i]['all'][lab]['amp'].append(data[i][j][lab]['amp'])  
+            if spike:
+                data[i]['all'][lab]['spiked'].append(data[i][j][lab]['spiked'])
             
-    data[i]['all']['meta'] = data[i][j]['meta']
+            data[i]['all']['meta'] = data[i][j]['meta']
         
 
 # collates data across cell iterations
@@ -163,7 +166,7 @@ data['all'] = {}
 
 for lab in clus_info['label']:
     
-    data['all'][lab] = {'vm':[], 'dur':[], 'amp':[]}    
+    data['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[]}    
 
     for i in range(len(iterations)):
         
@@ -171,18 +174,20 @@ for lab in clus_info['label']:
         if dur_and_amp:
             data['all'][lab]['dur'].extend(data[i]['all'][lab]['dur'])
             data['all'][lab]['amp'].extend(data[i]['all'][lab]['amp'])
+        if spike:
+            data['all'][lab]['spiked'].extend(data[i]['all'][lab]['spiked'])
             
 
 # collates meta data
 data['meta'] = {'tm':data[i]['all']['meta']['tm'], 'cell type':cell_type, 'iterations':iterations,
-                       'clustered':clus_info}
+                       'n rounds':n_rounds, 'clustered':clus_info}
 if noise:
     info = cf.params_for_input(cell_type, 'noise')
     data['meta']['noise'] = info['noise']
 if HFI:
     info = cf.params_for_input(cell_type, 'HFI')
-    info['HFI']['stim_t'] = clus_info['stim_t'] + HFI_delay
-    info['HFI']['stop_t'] = clus_info['stop_t'] + HFI_delay
+    info['HFI']['stim_t'] = clus_info['params']['stim_t'] + HFI_delay
+    info['HFI']['stop_t'] = clus_info['params']['stop_t'] + HFI_delay
     data['meta']['HFI'] = info['HFI']
     
 
@@ -209,5 +214,5 @@ print('Saving data as {}'.format(name))
 
 h.quit()
 
-  
+
     
