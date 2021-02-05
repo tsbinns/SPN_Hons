@@ -2388,7 +2388,7 @@ def params_for_input(cell_type, input_type):
     
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
-    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':700, 'isi':1, \
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':300, 'stop_t':600, 'isi':1, \
                                    'pre_t':-50}
     
     

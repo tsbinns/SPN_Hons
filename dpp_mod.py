@@ -46,7 +46,7 @@ if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
-model_iterator = [0,1]
+model_iterator = [0]
 
 iterations = model_iterator.copy()
 
@@ -71,7 +71,7 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # ===== simulate model(s) =====
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
-noise = 0
+noise = 1
 HFI = 0
 HFI_delay = 0
 dur_and_amp = 1
@@ -248,8 +248,8 @@ cf.save_data(data,folder+name)
 print('Saving data as {}'.format(name))
 
 
-
+'''
 h.quit()
-
+'''
 
     

@@ -314,6 +314,7 @@ def dpp_ACh_modded(model_data,
     for i, clus_tar in enumerate(clus_info['clustered']['target']): # for each simulation target
         
         clus_lab = clus_info['clustered']['label'][i] # label for input target
+        data[clus_lab] = {}
         
         # get the targets for cholinergic input
         ACh_targets = {}
