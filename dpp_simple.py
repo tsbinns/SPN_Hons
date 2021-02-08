@@ -41,11 +41,12 @@ specs = {'dspn': {
         
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
-cell_type = 'dspn'
+cell_type = 'ispn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
-    
-model_iterator = cf.iter_params(cell_type, only_ids=True)
+ 
+model_iterator = list(range(specs[cell_type]['N']))
+#model_iterator = cf.iter_params(cell_type, only_ids=True)
 #model_iterator = [0,1]
 
 iterations = model_iterator.copy()
@@ -71,11 +72,11 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # ===== simulate model(s) =====
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
-noise = 1
-HFI = 1
+noise = 0
+HFI = 0
 HFI_delay = 0
-dur_and_amp = 0
-spike = 1
+dur_and_amp = 1
+spike = 0
 
 start = time.time() # for timing simulations
 

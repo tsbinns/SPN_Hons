@@ -21,7 +21,7 @@ pc = h.ParallelContext()
 
 # ===== load model mechanisms/parameters =====
 import neuron               as nrn
-#nrn.load_mechanisms('mechanisms/single')
+nrn.load_mechanisms('mechanisms/single')
 
 h.load_file('stdlib.hoc')
 h.load_file('import3d.hoc')
@@ -46,7 +46,7 @@ if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
-model_iterator = [0]
+model_iterator = list(range(specs[cell_type]['N']))
 
 iterations = model_iterator.copy()
 
@@ -71,7 +71,7 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # ===== simulate model(s) =====
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
-noise = 1
+noise = 0
 HFI = 0
 HFI_delay = 0
 dur_and_amp = 1
@@ -248,8 +248,8 @@ cf.save_data(data,folder+name)
 print('Saving data as {}'.format(name))
 
 
-'''
+
 h.quit()
-'''
+
 
     

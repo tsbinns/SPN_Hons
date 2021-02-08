@@ -22,7 +22,7 @@ from   matplotlib.colors import LinearSegmentedColormap as lsc
 # what to visualise =============
 
 cell_type = input("What cell type should be visualised: dspn; or ispn?")
-input_type = input("What input should be visualised: 'clustered'; 'stim'; or 'ACh'?")
+input_type = input("What input should be visualised: 'clustered'; 'HFI'; or 'ACh'?")
 
 vis_info = cf.params_for_input(cell_type,input_type)
 
@@ -72,7 +72,8 @@ if input_type == 'clustered':
 
 # increases voltage of stimulation inputs an intermediate amount to highlight 
 # these regions in green
-if input_type == 'stim':
+'''
+if input_type == 'HFI':
     vis_cmap = lsc.from_list('my_cmap',['black','green'])
     for i, tar in enumerate(vis_info['stim']['target']):
         if tar[:4] == 'dend':
@@ -81,26 +82,38 @@ if input_type == 'stim':
             soma_col = 'green'
         else:
             raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
+'''
 
 # increases voltage of stimulation inputs a small amount to highlight  these 
 # regions in cyan
 if input_type == 'ACh':
     vis_cmap = lsc.from_list('my_cmap',['black','cyan'])
+    for i, tar in enumerate(vis_info['clustered']['target']):
+        if tar[:4] == 'dend':
+            h.dend[int(tar[5:-1])](.5).v = 35
+        elif tar[:4] == 'soma':
+            soma_col = 'red' # highlight soma if targeted by input
+        else:
+            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
     for i, tar in enumerate(vis_info['ACh']['target']):
         if tar[:4] == 'dend':
             h.dend[int(tar[5:-1])](.5).v = 35
         elif tar[:4] == 'soma':
             soma_col = 'cyan'
-        else:
-            raise ValueError("Trying to visualise input to '{}', but only visualisation of input to 'dend' and 'soma' currently supported".format(tar[:4]))
-
+        elif tar[:4] == 'axon':
+            h.axon[int(tar[5:-1])](.5).v = 35
 
 # visualisation ==========
 
 # plots dendrites
+'''
 sections = h.SectionList([sec for sec in h.allsec() if 'dend' in str(sec)])
 ps = h.PlotShape(sections,False).plot(plt)
 ps._do_plot(0,1,h.dend,'v',cmap=vis_cmap)
+'''
+ps = h.PlotShape(h.SectionList(),False).plot(plt)
+ps._do_plot(0,1,h.allsec(),'v',cmap=vis_cmap)
+
 
 # Make sphere to mimic soma
 u = np.linspace(0, 2 * np.pi, 100)
@@ -131,3 +144,5 @@ ps.set_axis_off()
 # adds title
 ps.text2D(.4, .9, '{}, {} inputs'.format(cell_type,input_type), \
           transform=ps.transAxes)
+
+plt.show()

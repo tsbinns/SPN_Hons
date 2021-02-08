@@ -179,10 +179,14 @@ def dpp_generation(model_data,
         
         # add background noise
         if noise:
+            '''
             noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, model_data['cell_type'], 
                 freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
                 n_glut=noise_params['n_glut'], n_gaba=noise_params['n_gaba'], only_dend=noise_params['only dend'],
                 glut_delay=noise_params['stim_t'], gaba_delay=noise_params['stim_t'])
+            '''
+            noise_syn, noise_stim, noise_ncon = cf.set_bg_noise(cell,model_data['cell_type'], fglut=noise_params['freq_glut'],
+                fgaba=noise_params['freq_gaba'],dendOnly=noise_params['only dend'])
 
         
         # add high-frequency inputs
@@ -190,14 +194,15 @@ def dpp_generation(model_data,
             # adds HFI
             HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, model_data['cell_type'], 
                 freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
-                delay=clus_params['stim_t']+HFI_delay, exclude=HFI_info['HFI']['exclude'])
+                delay=clus_params['stim_t']+(clus_params['stim_n']*clus_params['isi'])+HFI_delay, 
+                exclude=HFI_info['HFI']['exclude'])
             # collates data
             data['HFI'] = arrangement
         
         
         # run simulation
         h.finitialize(-80)
-        while h.t < clus_params['stop_t']+HFI_delay:
+        while h.t < clus_params['stop_t']+HFI_delay+(clus_params['stim_n']*clus_params['isi']):
             h.fadvance()
         tm = tm.to_python()
         vm = vm.to_python()
@@ -217,12 +222,21 @@ def dpp_generation(model_data,
             data[clus_lab]['dur'] = cf.dpp_dur(tm, vm, base_vm, clus_params['stim_t'])
             data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
             
-        # check whether a spike occurred
-        if spike:
-            thresh = 0
-            data[clus_lab]['spiked'] = 0
-            if max(vm) > thresh:
-                data[clus_lab]['spiked'] = 1
+        # get spike-related data
+            if spike:
+                spiked = 0
+                thresh = 0
+                # checks whether spike occured
+                data[clus_lab]['spiked'] = 0
+                if max(vm) > thresh:
+                    data[clus_lab]['spiked'] = 1
+                    spiked = 1
+                # checks time of first spike number of spikes that occured (if any)
+                data[clus_lab]['first_spike'] = []
+                data[clus_lab]['spike_n'] = []
+                if spiked == 1:
+                    data[clus_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
+                    data[clus_lab]['spike_n'] = cf.spike_n(vm)
             
         
     return data
@@ -368,7 +382,7 @@ def dpp_ACh_modded(model_data,
             
             # run simulation
             h.finitialize(-80)
-            while h.t < clus_params['stop_t']+HFI_delay:
+            while h.t < clus_params['stop_t']+HFI_delay+(clus_params['stim_n']*clus_params['isi']):
                 h.fadvance()
             tm = tm.to_python()
             vm = vm.to_python()
@@ -388,12 +402,22 @@ def dpp_ACh_modded(model_data,
                 data[clus_lab][ACh_lab]['dur'] = cf.dpp_dur(tm, vm, base_vm, clus_params['stim_t'])
                 data[clus_lab][ACh_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
                 
-            # check whether a spike occurred
+            # get spike-related data
             if spike:
+                spiked = 0
                 thresh = 0
+                # checks whether spike occured
                 data[clus_lab][ACh_lab]['spiked'] = 0
                 if max(vm) > thresh:
                     data[clus_lab][ACh_lab]['spiked'] = 1
+                    spiked = 1
+                # checks time of first spike number of spikes that occured (if any)
+                data[clus_lab][ACh_lab]['first_spike'] = []
+                data[clus_lab][ACh_lab]['spike_n'] = []
+                if spiked == 1:
+                    data[clus_lab][ACh_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
+                    data[clus_lab][ACh_lab]['spike_n'] = cf.spike_n(vm)
+                
             
         
     return data

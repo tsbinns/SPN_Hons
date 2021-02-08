@@ -150,6 +150,27 @@ def HF_input_arrangement(cell, exclude=[], n_inputs=20):
 
 
 
+def spike_n(vm, thresh=0):
+    '''
+    Finds the number of spikes in voltage data. Spikes are defined as a crossing of 'thresh'. If 'thresh' is crossed,
+    the voltage must drop below this value before another spike can be identified
+    '''
+    
+    n_spikes = 0
+    
+    for v in vm:
+        if v <= thresh:
+            ready_to_spike = 1 # records that a spike can occur, as the voltage is below the threshold
+        if v > thresh and ready_to_spike:
+            n_spikes += 1
+            ready_to_spike = 0 # records that a spike occured earlier, so voltage must drop below threshold before a new spike
+                                   # spike can be recognised
+                                   
+    return n_spikes
+
+
+
+
 def alpha(ht, tstart, gmax=1, tau=500):
     ''' 
     calc and returns a "magnitude" using an alpha function -> used for modulation 
@@ -780,7 +801,7 @@ def set_bg_noise(cell,              \
         
         # set bg noise----------------------------------
         
-        if cell_type == 'D1':
+        if cell_type == 'dspn':
             gbase = 0.3e-3
         else:
             gbase = 0.2e-3
@@ -795,14 +816,14 @@ def set_bg_noise(cell,              \
                                 NS_interval=1000.0/fglut,    \
                                 NC_conductance=gbase,       \
                                 NS_start=delay,             \
-                                seed=None )
+                                seed=time.time() )
         # create a gaba synapse (Exp2Syn)
         random_synapse(ns, nc, Syn, sec, 0.1,           \
                                 Type='gaba',                \
                                 NS_interval=1000.0/fgaba,       \
-                                NC_conductance=gbase*5,     \
+                                NC_conductance=gbase*3,     \
                                 NS_start=delay,             \
-                                seed=None      )
+                                seed=time.time()      )
         
         Syn[sec.name()+'_glut'].ratio = 1.0
         
@@ -899,7 +920,7 @@ def set_noise(cell,
         gbase = 0.2e-3
     else:
         raise ValueError('Cell type not recognised')
-    
+    gbase = 1e-3
     
     # ===== adds inputs =====
     # adds glutamatergic inputs
@@ -919,7 +940,7 @@ def set_noise(cell,
         for sec in sections:
             if sec.name() == secs[tar]:
                 random_synapse(ns, nc, Syn, sec, gaba_inputs['x'][i],
-                               NS_interval = 1000/freq_gaba, NC_conductance = gbase*5,
+                               NS_interval = 1000/freq_gaba, NC_conductance = gbase,
                                NS_start = gaba_delay, seed = time.time())                
                 break
         
@@ -951,7 +972,7 @@ def set_HFI(cell,
         gbase = 0.2e-3
     else:
         raise ValueError('Cell type not recognised')
-    
+    gbase=1e-3
     
     # ===== gets the HFI arrangement =====
     arrangement = HF_input_arrangement(cell, exclude=exclude, n_inputs=n_inputs)
@@ -2388,7 +2409,7 @@ def params_for_input(cell_type, input_type):
     
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
-    info['clustered']['params'] = {'stim_n':16, 'stim_t':300, 'stop_t':600, 'isi':1, \
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':550, 'isi':1, \
                                    'pre_t':-50}
     
     
@@ -2424,12 +2445,11 @@ def params_for_input(cell_type, input_type):
                                  'stop_t':info['clustered']['params']['stop_t']}
         
     elif input_type == 'HFI':
-        info['HFI']['params'] = {'freq':30, 'n_inputs':40}
+        info['HFI']['params'] = {'freq':25, 'n_inputs':20}
         
     elif input_type == 'noise':
         info['noise'] = {}
-        info['noise']['params'] = {'freq_glut':4, 'freq_gaba':2, 'n_glut':400, 'n_gaba':100, 'only dend':1,
-                                   'stim_t':0, 'stop_t':info['clustered']['params']['stop_t']}
+        info['noise']['params'] = {'freq_glut':12, 'freq_gaba':3, 'only dend':1}
         
         
         
