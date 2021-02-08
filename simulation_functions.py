@@ -223,20 +223,20 @@ def dpp_generation(model_data,
             data[clus_lab]['amp'] = cf.dpp_amp(tm, vm, base_vm, clus_params['stim_t'])
             
         # get spike-related data
-            if spike:
-                spiked = 0
-                thresh = 0
-                # checks whether spike occured
-                data[clus_lab]['spiked'] = 0
-                if max(vm) > thresh:
-                    data[clus_lab]['spiked'] = 1
-                    spiked = 1
-                # checks time of first spike number of spikes that occured (if any)
-                data[clus_lab]['first_spike'] = []
-                data[clus_lab]['spike_n'] = []
-                if spiked == 1:
-                    data[clus_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
-                    data[clus_lab]['spike_n'] = cf.spike_n(vm)
+        if spike:
+            spiked = 0
+            thresh = 0
+            # checks whether spike occured
+            data[clus_lab]['spiked'] = 0
+            if max(vm) > thresh:
+                data[clus_lab]['spiked'] = 1
+                spiked = 1
+            # checks time of first spike number of spikes that occured (if any)
+            data[clus_lab]['first_spike'] = []
+            data[clus_lab]['spike_n'] = []
+            if spiked == 1:
+                data[clus_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
+                data[clus_lab]['spike_n'] = cf.spike_n(vm)
             
         
     return data

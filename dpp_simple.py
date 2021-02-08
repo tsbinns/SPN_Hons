@@ -21,7 +21,7 @@ pc = h.ParallelContext()
 
 # ===== load model mechanisms/parameters =====
 import neuron               as nrn
-nrn.load_mechanisms('mechanisms/single')
+#nrn.load_mechanisms('mechanisms/single')
 
 h.load_file('stdlib.hoc')
 h.load_file('import3d.hoc')
@@ -41,13 +41,13 @@ specs = {'dspn': {
         
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
-cell_type = 'ispn'
+cell_type = 'dspn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
  
-model_iterator = list(range(specs[cell_type]['N']))
+#model_iterator = list(range(specs[cell_type]['N']))
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
-#model_iterator = [0,1]
+model_iterator = [0]
 
 iterations = model_iterator.copy()
 
@@ -72,11 +72,11 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # ===== simulate model(s) =====
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
-noise = 0
-HFI = 0
+noise = 1
+HFI = 1
 HFI_delay = 0
-dur_and_amp = 1
-spike = 0
+dur_and_amp = 0
+spike = 1
 
 start = time.time() # for timing simulations
 
@@ -158,6 +158,8 @@ for i in range(len(iterations)):
                 data[i]['all'][lab]['amp'].append(data[i][j][lab]['amp'])  
             if spike:
                 data[i]['all'][lab]['spiked'].append(data[i][j][lab]['spiked'])
+                data[i]['all'][lab]['first_spike'].append(data[i][j][lab]['first_spike'])
+                data[i]['all'][lab]['spike_n'].append(data[i][j][lab]['spike_n'])
             
             data[i]['all']['meta'] = data[i][j]['meta']
         
@@ -177,6 +179,8 @@ for lab in clus_info['label']:
             data['all'][lab]['amp'].extend(data[i]['all'][lab]['amp'])
         if spike:
             data['all'][lab]['spiked'].extend(data[i]['all'][lab]['spiked'])
+            data['all'][lab]['first_spike'].extend(data[i]['all'][lab]['first_spike'])
+            data['all'][lab]['spike_n'].extend(data[i]['all'][lab]['spike_n'])
             
 
 # collates meta data

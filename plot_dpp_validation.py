@@ -156,7 +156,7 @@ else:
                 spiking['avg'][lab] = []
             spiking['avg'][lab].append(np.mean(data['all'][lab]['spiked']))
             
-            # std dev of firing probability at each time point
+            # sem of firing probability at each time point
             if r == 0:
                 spiking['sem'][lab] = []
             spiking['sem'][lab].append(stats.sem(data['all'][lab]['spiked']))
@@ -178,7 +178,7 @@ else:
             
             # underscore area of clustered stimulation
             axs[i].plot([stim_t,stim_t+stim_n*isi],[plt.ylim()[0],plt.ylim()[0]], \
-                     linewidth=5,color='black',solid_capstyle='butt')
+                     linewidth=5,color='red',solid_capstyle='butt')
             
             # underscore area of HFI
             axs[i].plot([HFI_info['stim_t'],HFI_info['stop_t']],[plt.ylim()[0],plt.ylim()[0]], \

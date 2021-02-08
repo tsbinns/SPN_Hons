@@ -16,7 +16,7 @@ validation = 1
 if validation == 1:
     
     # load data
-    data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
+    data = cf.load_data('Data/dspn_HFI[0]+0_validation.json')
     clus_info = data['meta']['clustered']
     target_labels = clus_info['label']
     cell_type = data['meta']['cell type']
@@ -78,7 +78,7 @@ if validation == 1:
 else:
     
     # load data
-    data = cf.load_data('Data/ispn_HFI[0]+0_modulation.json')
+    data = cf.load_data('Data/dspn_HFI[0]+0_modulation.json')
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
     
@@ -93,6 +93,8 @@ else:
     fig, axs = plt.subplots(2,2)
     fig.suptitle(cell_type)
     for i, lab in enumerate(target_labels):
+        
+        
         
         # duration data
         axs[i,0].hist(data['all'][lab]['dur'])
