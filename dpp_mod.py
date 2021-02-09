@@ -160,6 +160,8 @@ for i in range(len(iterations)):
                 data[i]['all'][lab][lab]['amp'].append(data[i][j][lab][lab]['amp'])  
             if spike:
                 data[i]['all'][lab][lab]['spiked'].append(data[i][j][lab][lab]['spiked'])
+                data[i]['all'][lab][lab]['first_spike'].append(data[i][j][lab][lab]['first_spike'])
+                data[i]['all'][lab][lab]['spike_n'].append(data[i][j][lab][lab]['spike_n'])
                 
         for mod in ACh_info['label']:
             
@@ -173,6 +175,8 @@ for i in range(len(iterations)):
                     data[i]['all'][lab][mod]['amp'].append(data[i][j][lab][mod]['amp'])  
                 if spike:
                     data[i]['all'][lab][mod]['spiked'].append(data[i][j][lab][mod]['spiked'])
+                    data[i]['all'][lab][mod]['first_spike'].append(data[i][j][lab][mod]['first_spike'])
+                    data[i]['all'][lab][mod]['spike_n'].append(data[i][j][lab][mod]['spike_n'])
             
             
         data[i]['all']['meta'] = data[i][j]['meta']
@@ -194,6 +198,8 @@ for lab in clus_info['label']:
             data['all'][lab][lab]['amp'].extend(data[i]['all'][lab][lab]['amp'])
         if spike:
             data['all'][lab][lab]['spiked'].extend(data[i]['all'][lab][lab]['spiked'])
+            data['all'][lab][lab]['first_spike'].extend(data[i]['all'][lab][lab]['first_spike'])
+            data['all'][lab][lab]['spike_n'].extend(data[i]['all'][lab][lab]['spike_n'])
             
     for mod in ACh_info['label']:
         
@@ -207,6 +213,8 @@ for lab in clus_info['label']:
                 data['all'][lab][mod]['amp'].extend(data[i]['all'][lab][mod]['amp'])
             if spike:
                 data['all'][lab][mod]['spiked'].extend(data[i]['all'][lab][mod]['spiked'])
+                data['all'][lab][mod]['first_spike'].extend(data[i]['all'][lab][mod]['first_spike'])
+                data['all'][lab][mod]['spike_n'].extend(data[i]['all'][lab][mod]['spike_n'])
             
 
 # collates meta data
@@ -217,8 +225,8 @@ if noise:
     data['meta']['noise'] = info['noise']
 if HFI:
     info = cf.params_for_input(cell_type, 'HFI')
-    info['HFI']['stim_t'] = clus_info['params']['stim_t'] + HFI_delay
-    info['HFI']['stop_t'] = clus_info['params']['stop_t'] + HFI_delay
+    info['HFI']['stim_t'] = clus_info['params']['stim_t'] + clus_info['params']['stim_n']*clus_info['params']['isi'] + HFI_delay
+    info['HFI']['stop_t'] = clus_info['params']['stop_t'] + clus_info['params']['stim_n']*clus_info['params']['isi'] + HFI_delay
     data['meta']['HFI'] = info['HFI']
     
 
