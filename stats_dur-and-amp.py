@@ -2,83 +2,78 @@
 
 import common_functions                 as cf
 import scipy.stats                      as stats
-from   statsmodels.stats.diagnostic import lilliefors
 import matplotlib.pyplot                as plt
 
 
 
 
 
-validation = 1
+modulation = 0
 
 
 
-if validation == 1:
+if not modulation:
     
     # load data
-    data = cf.load_data('Data/dspn_HFI[0]+0_validation.json')
+    data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
     clus_info = data['meta']['clustered']
-    target_labels = clus_info['label']
+    clus_labels = clus_info['label']
     cell_type = data['meta']['cell type']
     
     # normality checking =====
     
+    # gets stats
+    data['stats'] = {}
+    for clus_lab in clus_labels:
+        
+        data['stats'][clus_lab] = {'dur':{}, 'amp':{}}
+        # duration data
+        data['stats'][clus_lab]['dur'] = cf.norm_dist(data['all'][clus_lab]['dur'])
+        # amplitude data
+        data['stats'][clus_lab]['amp'] = cf.norm_dist(data['all'][clus_lab]['amp'])
+        
+    
     # plot histograms
     fig, axs = plt.subplots(2,2)
     fig.suptitle(cell_type)
-    for i, lab in enumerate(target_labels):
+    for i, clus_lab in enumerate(clus_labels):
         
         # duration data
-        axs[i,0].hist(data['all'][lab]['dur'])
-        axs[i,0].set_title('dur, ' + lab)
+        axs[i,0].hist(data['all'][clus_lab]['dur'])
+        axs[i,0].set_title('dur, ' + clus_lab + ', ' + str(data['stats'][clus_lab]['dur']))
         
         # amplitude data
-        axs[i,1].hist(data['all'][lab]['amp'])
-        axs[i,1].set_title('amp, ' + lab)
+        axs[i,1].hist(data['all'][clus_lab]['amp'])
+        axs[i,1].set_title('amp, ' + clus_lab + ', ' + str(data['stats'][clus_lab]['amp']))
         
         plt.tight_layout()
-        
     
-    # gets stats
-    data['stats'] = {}
-    for lab in target_labels:
-        data['stats'][lab] = {'dur':{}, 'amp':{}}
-        # kurtosis
-        data['stats'][lab]['dur']['kurt'] = stats.kurtosistest(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['kurt'] = stats.kurtosistest(data['all'][lab]['amp'])
-        # skewness
-        data['stats'][lab]['dur']['skew'] = stats.skewtest(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['skew'] = stats.skewtest(data['all'][lab]['amp'])
-        # ks test
-        data['stats'][lab]['dur']['ks'] = lilliefors(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['ks'] = lilliefors(data['all'][lab]['amp'])
     
     
     # tests on data =====
-    '''
-    for dspn, dur and amp data was normally distributed; for ispn, a bit iffy but still within reason for normal distribution
-    '''
+        # for dspn, dur and amp data was normally distributed; for ispn, a bit iffy but still within reason for normal distribution
+    
     
     data['stats']['diff'] = {'dur':{}, 'amp':{}}
     
     # duration
-    data['stats']['diff']['dur']['result'] = stats.ttest_rel(data['all'][target_labels[1]]['dur'], \
-        data['all'][target_labels[0]]['dur'])
-    data['stats']['diff']['dur']['label'] = 'paired t-test, two-sided'
+    data['stats']['diff']['dur']['result'] = stats.anderson_ksamp([data['all'][clus_labels[1]]['dur'],
+        data['all'][clus_labels[0]]['dur']])[-1]
+    data['stats']['diff']['dur']['label'] = 'Anderson-Darling; proximal:distal duration'
     # ttest_rel() doesn't have one-sided implemented, so to see if duration of one greater than other, 
         # t-statistic must be > 0 and p-value/2 < .05
         
     # amplitude
-    data['stats']['diff']['amp']['result'] = stats.ttest_rel(data['all'][target_labels[1]]['amp'], \
-        data['all'][target_labels[0]]['amp'])
-    data['stats']['diff']['amp']['label'] = 'paired t-test, two-sided'
-    
+    data['stats']['diff']['amp']['result'] = stats.anderson_ksamp([data['all'][clus_labels[1]]['amp'],
+        data['all'][clus_labels[0]]['amp']])[-1]
+    data['stats']['diff']['amp']['label'] = 'Anderson-Darling; proximal:distal amplitude'
     
     
 else:
     
     # load data
-    data = cf.load_data('Data/dspn_HFI[0]+0_modulation.json')
+    data = cf.load_data('Data/ispn_HFI[0]+0_modulation.json')
+    ctrl_data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
     
@@ -89,56 +84,84 @@ else:
     
     # normality checking =====
     
-    # plot histograms
-    fig, axs = plt.subplots(2,2)
-    fig.suptitle(cell_type)
-    for i, lab in enumerate(target_labels):
-        
-        
-        
-        # duration data
-        axs[i,0].hist(data['all'][lab]['dur'])
-        axs[i,0].set_title('dur, ' + lab)
-        
-        # amplitude data
-        axs[i,1].hist(data['all'][lab]['amp'])
-        axs[i,1].set_title('amp, ' + lab)
-        
-        plt.tight_layout()
-        
-    
     # gets stats
     data['stats'] = {}
-    for lab in target_labels:
-        data['stats'][lab] = {'dur':{}, 'amp':{}}
-        # kurtosis
-        data['stats'][lab]['dur']['kurt'] = stats.kurtosistest(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['kurt'] = stats.kurtosistest(data['all'][lab]['amp'])
-        # skewness
-        data['stats'][lab]['dur']['skew'] = stats.skewtest(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['skew'] = stats.skewtest(data['all'][lab]['amp'])
-        # ks test
-        data['stats'][lab]['dur']['ks'] = lilliefors(data['all'][lab]['dur'])
-        data['stats'][lab]['amp']['ks'] = lilliefors(data['all'][lab]['amp'])
+    for clus_lab in clus_labels:
+        
+        data['stats'][clus_lab] = {}
+        data['stats'][clus_lab][clus_lab] = {'dur':{}, 'amp':{}}
+        # duration data
+        data['stats'][clus_lab][clus_lab]['dur'] = cf.norm_dist(data['all'][clus_lab][clus_lab]['dur'])
+        # amplitude data
+        data['stats'][clus_lab][clus_lab]['amp'] = cf.norm_dist(data['all'][clus_lab][clus_lab]['amp'])
+        
+        for ACh_lab in ACh_labels:
+            
+            data['stats'][clus_lab][ACh_lab] = {'dur':{}, 'amp':{}}
+            # duration data
+            data['stats'][clus_lab][ACh_lab]['dur'] = cf.norm_dist(data['all'][clus_lab][ACh_lab]['dur'])
+            # amplitude data
+            data['stats'][clus_lab][ACh_lab]['amp'] = cf.norm_dist(data['all'][clus_lab][ACh_lab]['amp'])
+    
+    
+    # plot histograms
+    for i, clus_lab in enumerate(clus_labels):
+        
+        fig, axs = plt.subplots(2,len(ACh_labels)+1)
+        fig.suptitle(cell_type + ', ' + clus_lab)
+        
+        # duration data
+        axs[0,0].hist(data['all'][clus_lab][clus_lab]['dur'])
+        axs[0,0].set_title('dur, on-site, ' + str(data['stats'][clus_lab][clus_lab]['dur']))
+        
+        # amplitude data
+        axs[1,0].hist(data['all'][clus_lab][clus_lab]['amp'])
+        axs[1,0].set_title('amp, on-site, ' + str(data['stats'][clus_lab][clus_lab]['amp']))
+        
+        for j, ACh_lab in enumerate(ACh_labels):
+        
+            # duration data
+            axs[0,j+1].hist(data['all'][clus_lab][ACh_lab]['dur'])
+            axs[0,j+1].set_title('dur, ' + ACh_lab + ', ' + str(data['stats'][clus_lab][ACh_lab]['dur']))
+            
+            # amplitude data
+            axs[1,j+1].hist(data['all'][clus_lab][ACh_lab]['amp'])
+            axs[1,j+1].set_title('amp, ' + ACh_lab + ', ' + str(data['stats'][clus_lab][ACh_lab]['amp']))
+        
+        plt.tight_layout()  
+        
     
     
     # tests on data =====
-    '''
-    for dspn, dur and amp data was normally distributed; for ispn, a bit iffy but still within reason for normal distribution
-    '''
+        # for dspn and ispn, dur and amp data was pretty normally distributed
     
-    data['stats']['diff'] = {'dur':{}, 'amp':{}}
+    data['stats']['diff'] = {}
     
-    # duration
-    data['stats']['diff']['dur']['result'] = stats.ttest_rel(data['all'][target_labels[1]]['dur'], \
-        data['all'][target_labels[0]]['dur'])
-    data['stats']['diff']['dur']['label'] = 'paired t-test, two-sided'
-    # ttest_rel() doesn't have one-sided implemented, so to see if duration of one greater than other, 
-        # t-statistic must be > 0 and p-value/2 < .05
+    for i, clus_lab in enumerate(clus_labels):
         
-    # amplitude
-    data['stats']['diff']['amp']['result'] = stats.ttest_rel(data['all'][target_labels[1]]['amp'], \
-        data['all'][target_labels[0]]['amp'])
-    data['stats']['diff']['amp']['label'] = 'paired t-test, two-sided'
+        data['stats']['diff'][clus_lab] = {}
+        data['stats']['diff'][clus_lab][clus_lab] = {'dur':{}, 'amp':{}}
+        # duration data
+        data['stats']['diff'][clus_lab][clus_lab]['dur']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['dur'],
+            data['all'][clus_lab][clus_lab]['dur']])[-1]
+        data['stats']['diff'][clus_lab][clus_lab]['dur']['label'] = 'Anderson-Darling; control:modulated duration'
+        # amplitude data
+        data['stats']['diff'][clus_lab][clus_lab]['amp']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['amp'],
+            data['all'][clus_lab][clus_lab]['amp']])[-1]
+        data['stats']['diff'][clus_lab][clus_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
+        
+        for j, ACh_lab in enumerate(ACh_labels):
+            
+            data['stats']['diff'][clus_lab][ACh_lab] = {'dur':{}, 'amp':{}}
+            # duration data
+            data['stats']['diff'][clus_lab][ACh_lab]['dur']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['dur'],
+                data['all'][clus_lab][ACh_lab]['dur']])[-1]
+            data['stats']['diff'][clus_lab][ACh_lab]['dur']['label'] = 'Anderson-Darling; control:modulated duration'
+            # amplitude data
+            data['stats']['diff'][clus_lab][ACh_lab]['amp']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['amp'],
+                data['all'][clus_lab][ACh_lab]['amp']])[-1]
+            data['stats']['diff'][clus_lab][ACh_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
+    
+    
     
     

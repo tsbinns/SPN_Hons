@@ -3,14 +3,16 @@ common functions for SPN simulations
 '''
 
 
-from   neuron     import           h
-from   matplotlib import pyplot as plt
-import numpy                    as np
+from   neuron                       import h
+from   matplotlib                   import pyplot as plt
+import numpy                            as np
 import os, shutil
 import pickle
 import json, codecs
 import random
 import time
+import scipy.stats                      as stats
+from   statsmodels.stats.diagnostic import lilliefors
 
 
 
@@ -108,6 +110,68 @@ def get_dists(cell,
 
 
 
+def binary_to_table(x, y):
+    '''
+    Convert binary data x and y into a contingency table.
+    
+    INPUT(S):
+        - x: vector of binary data. Vector length = number of observations of a variable in condition 1 [list of 1s and 0s]
+        - y: vector of binary data. Vector length = number of observations of a variable in condition 2 [list of 1s and 0s]
+        
+    OUTPUT(S):
+        - table: 2x2 array where: [0,0] is the number of times where the corresponding values in x and y are 1;
+            [0,1] is the number of times where the corresponding values in x and y are 1 and 0, respectively;
+            [1,0] is the number of times where the corresponding values in x and y are 0 and 1, respectively;
+            [1,1] is the number of times where the corresponding values in x and y are 0
+            
+    Thomas Binns (author), 08/02/21
+    '''
+    
+    if len(x) != len(y):
+        raise ValueError("The lengths of x and y must match.")
+    
+    
+    table = np.array([[0,0],[0,0]])
+    
+    for i, val in enumerate(x):
+         if val:
+             if y[i]: # if both x[i] and y[i] == 1
+                 table[0,0] += 1
+             else: # if x[i] == 1 but y[i] == 0
+                 table[0,1] += 1
+         else:
+             if y[i]: # if x[i] == 0 but y[i] == 1
+                 table[1,0] += 1
+             else: # if both x[i] and y[i] == 0
+                 table[1,1] += 1
+
+
+    return table
+
+
+
+def McNemar(table):
+    '''
+    Runs the McNemar test to determine if binary data is significantly different.
+    
+    INPUT(S):
+        - table: data in a contingency table form [2x2 array] (use binary_to_table function)
+        
+    OUTPUT(S):
+        - p-value of the McNemar test
+        
+    NOTES:
+        - see: https://aaronschlegel.me/mcnemars-test-paired-data-python.html; 
+            https://machinelearningmastery.com/mcnemars-test-for-machine-learning/
+            
+    Thomas Binns (author), 08/02/21
+    '''
+    
+    x2_stat = (table[0, 1] - table[1, 0]) ** 2 / (table[0, 1] + table[1, 0])
+    return stats.chi2.sf(x2_stat, 1)
+
+
+
 def HF_input_arrangement(cell, exclude=[], n_inputs=20):
     '''
     Chooses which cell sections to provide high-frequency input to.
@@ -168,6 +232,30 @@ def spike_n(vm, thresh=0):
                                    
     return n_spikes
 
+
+
+def norm_dist(data, alpha=.05):
+    '''
+    Tests whether data is normally distributed based on skewness, kurtosis, and Lilliefors K-S test
+    '''
+    
+    norm = [0,0,0] # [0] == skewness; [1] == kurtosis; [2] == Lilliefors
+    
+    # skewness
+    norm[0] = stats.skewtest(data)[1]
+    # kurtosis
+    norm[1] = stats.kurtosistest(data)[1]
+    # ks test
+    norm[2] = lilliefors(data)[1]
+    
+    for i, x in enumerate(norm):
+        if x < alpha:
+            norm[i] = 1
+        else:
+            norm[i] = 0
+    
+    return norm
+    
 
 
 
@@ -816,14 +904,14 @@ def set_bg_noise(cell,              \
                                 NS_interval=1000.0/fglut,    \
                                 NC_conductance=gbase,       \
                                 NS_start=delay,             \
-                                seed=time.time() )
+                                seed=None )
         # create a gaba synapse (Exp2Syn)
         random_synapse(ns, nc, Syn, sec, 0.1,           \
                                 Type='gaba',                \
                                 NS_interval=1000.0/fgaba,       \
                                 NC_conductance=gbase*3,     \
                                 NS_start=delay,             \
-                                seed=time.time()      )
+                                seed=None      )
         
         Syn[sec.name()+'_glut'].ratio = 1.0
         
@@ -930,7 +1018,7 @@ def set_noise(cell,
             if sec.name() == secs[tar]:
                 random_synapse(ns, nc, Syn, sec, glut_inputs['x'][i],
                                NS_interval = 1000/freq_glut, NC_conductance = gbase,
-                               NS_start = glut_delay, seed = time.time()) #None
+                               NS_start = glut_delay, seed = None) #None
                 Syn[sec.name()+'_glut'].ratio = 1.0
                 break
             
@@ -941,7 +1029,7 @@ def set_noise(cell,
             if sec.name() == secs[tar]:
                 random_synapse(ns, nc, Syn, sec, gaba_inputs['x'][i],
                                NS_interval = 1000/freq_gaba, NC_conductance = gbase,
-                               NS_start = gaba_delay, seed = time.time())                
+                               NS_start = gaba_delay, seed = None)                
                 break
         
     
@@ -984,7 +1072,7 @@ def set_HFI(cell,
             if sec.name() == tar:
                 random_synapse(ns, nc, Syn, sec, random.uniform(0,1),
                                NS_interval = 1000/freq, NC_conductance = gbase,
-                               NS_start = delay, seed = time.time())
+                               NS_start = delay, seed = None)
                 Syn[sec.name()+'_glut'].ratio = 1.0
                 break 
         

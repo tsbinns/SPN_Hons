@@ -21,7 +21,7 @@ pc = h.ParallelContext()
 
 # ===== load model mechanisms/parameters =====
 import neuron               as nrn
-#nrn.load_mechanisms('mechanisms/single')
+nrn.load_mechanisms('mechanisms/single')
 
 h.load_file('stdlib.hoc')
 h.load_file('import3d.hoc')
@@ -191,8 +191,8 @@ if noise:
     data['meta']['noise'] = info['noise']
 if HFI:
     info = cf.params_for_input(cell_type, 'HFI')
-    info['HFI']['stim_t'] = clus_info['params']['stim_t'] + HFI_delay
-    info['HFI']['stop_t'] = clus_info['params']['stop_t'] + HFI_delay
+    info['HFI']['stim_t'] = clus_info['params']['stim_t'] + clus_info['params']['stim_n']*clus_info['params']['isi'] + HFI_delay
+    info['HFI']['stop_t'] = clus_info['params']['stop_t'] + clus_info['params']['stim_n']*clus_info['params']['isi'] + HFI_delay
     data['meta']['HFI'] = info['HFI']
     
 
