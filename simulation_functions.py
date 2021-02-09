@@ -362,10 +362,8 @@ def dpp_ACh_modded(model_data,
             
             # add background noise
             if noise:
-                noise_syn, noise_stim, noise_ncon = cf.set_noise(cell, model_data['cell_type'], 
-                    freq_glut=noise_params['freq_glut'], freq_gaba=noise_params['freq_gaba'],
-                    n_glut=noise_params['n_glut'], n_gaba=noise_params['n_gaba'], only_dend=noise_params['only dend'],
-                    glut_delay=noise_params['stim_t'], gaba_delay=noise_params['stim_t'])
+                noise_syn, noise_stim, noise_ncon = cf.set_bg_noise(cell, model_data['cell_type'], 
+                    fglut=noise_params['freq_glut'], fgaba=noise_params['freq_gaba'], dendOnly=noise_params['only dend'])
     
             
             # add high-frequency inputs
@@ -373,7 +371,8 @@ def dpp_ACh_modded(model_data,
                 # adds HFI
                 HFI_syn, HFI_stim, HFI_ncon, arrangement = cf.set_HFI(cell, model_data['cell_type'], 
                     freq=HFI_params['freq'], n_inputs=HFI_params['n_inputs'],
-                    delay=clus_params['stim_t']+HFI_delay, exclude=HFI_info['HFI']['exclude'])
+                    delay=clus_params['stim_t']+(clus_params['stim_n']*clus_params['isi'])+HFI_delay, 
+                    exclude=HFI_info['HFI']['exclude'])
                 # collates data
                 data['HFI'] = arrangement
             

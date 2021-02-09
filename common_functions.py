@@ -10,7 +10,6 @@ import os, shutil
 import pickle
 import json, codecs
 import random
-import time
 import scipy.stats                      as stats
 from   statsmodels.stats.diagnostic import lilliefors
 
@@ -2497,7 +2496,7 @@ def params_for_input(cell_type, input_type):
     
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
-    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':550, 'isi':1, \
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':575, 'isi':1, \
                                    'pre_t':-50}
     
     
@@ -2508,7 +2507,6 @@ def params_for_input(cell_type, input_type):
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[48]','soma[0]','axon[0]']
-            info['ACh']['label'] = ['off-site','soma','axon']
             
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
@@ -2520,7 +2518,6 @@ def params_for_input(cell_type, input_type):
         if input_type == 'ACh': # cholinergic input info
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[8]','soma[0]','axon[0]']
-            info['ACh']['label'] = ['off-site','soma','axon']
         
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
@@ -2531,6 +2528,7 @@ def params_for_input(cell_type, input_type):
     if input_type == 'ACh':
         info['ACh']['params'] = {'stim_t':info['clustered']['params']['stim_t'],
                                  'stop_t':info['clustered']['params']['stop_t']}
+        info['ACh']['label'] = ['off-site','soma','axon']
         
     elif input_type == 'HFI':
         info['HFI']['params'] = {'freq':25, 'n_inputs':20}
