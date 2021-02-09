@@ -109,12 +109,12 @@ else:
     spiking['spike_n'] = {'avg':{}, 'sem':{}}
     
     
-    for r in range(len(delta)):
+    for d in range(len(delta)):
         
         # load data
-        data = cf.load_data('Data/ispn_HFI[1]+{}_validation.json'.format(delta[r]))
+        data = cf.load_data('Data/ispn_HFI[1]+{}_validation.json'.format(delta[d]))
         
-        delta_labels.append('+{}'.format(delta[r]))
+        delta_labels.append('+{}'.format(delta[d]))
         
         # plotting =================
         
@@ -138,11 +138,11 @@ else:
         # plot voltage traces =====
         
         fig, axs = plt.subplots(2,1)
-        fig.suptitle(cell_type + ' ({})'.format(delta_labels[r]))
+        fig.suptitle(cell_type + ' ({})'.format(delta_labels[d]))
         for i, lab in enumerate(target_labels):
             
             # avg firing probability at each time point
-            if r == 0:
+            if d == 0:
                 spiking['spiked']['avg'][lab] = []
                 spiking['first_spike']['avg'][lab] = []
                 spiking['spike_n']['avg'][lab] = []
@@ -151,7 +151,7 @@ else:
             spiking['spike_n']['avg'][lab].append(np.mean([x for x in data['all'][lab]['spike_n'] if x]))
             
             # sem of firing probability at each time point
-            if r == 0:
+            if d == 0:
                 spiking['spiked']['sem'][lab] = []
                 spiking['first_spike']['sem'][lab] = []
                 spiking['spike_n']['sem'][lab] = []
@@ -183,9 +183,9 @@ else:
                      linewidth=5,color='grey',solid_capstyle='butt')
             
             # ignores data at start of simulation before voltage reaches baseline
-            axs[i].set_xlim(stim_t+pre_t, stop_t+delta[r]+(stim_n*isi))
-            axs[i].set_xticks(np.arange(stim_t+pre_t, stop_t+delta[r]+(stim_n*isi)+1, step=50))
-            axs[i].set_xticklabels(np.arange(pre_t,stop_t-stim_t+(stim_n*isi)+1+delta[r],step=50))
+            axs[i].set_xlim(stim_t+pre_t, stop_t+delta[d]+(stim_n*isi))
+            axs[i].set_xticks(np.arange(stim_t+pre_t, stop_t+delta[d]+(stim_n*isi)+1, step=50))
+            axs[i].set_xticklabels(np.arange(pre_t,stop_t-stim_t+(stim_n*isi)+1+delta[d],step=50))
             
             plt.tight_layout(True)
             
