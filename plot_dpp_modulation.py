@@ -16,7 +16,7 @@ HFI = 0
 
 if HFI == 0:
     
-    cell_type = 'dspn'
+    cell_type = 'ispn'
     
     # load data
     data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
@@ -187,7 +187,6 @@ else: # ===================
     spiking = {}
     ctrl_spiking = {}
     
-    spike_props = ['spiked', 'first_spike', 'spike_n']
     labels = ['proximal dendrite', 'distal dendrite']
     ctrl_labels = ['proximal (control)', 'distal (control)']
     
@@ -217,9 +216,6 @@ else: # ===================
         clus_labels = clus_info['label']
         model_iterator = data['meta']['iterations']
         n_rounds = data['meta']['n rounds']
-        avg = data['meta']['avg']
-        if avg:
-            n_rounds = 1
         
         ACh_labels = ACh_info['label']
         
@@ -233,18 +229,11 @@ else: # ===================
         for i, clus_lab in enumerate(clus_labels):
         
             if d == 0:
-                ctrl_spiking[clus_lab] = {'spiked':{'avg':[], 'sem':[]}, 'first_spike':{'avg':[], 'sem':[]}, \
-                       'spike_n':{'avg':[], 'sem':[]}}
+                ctrl_spiking[clus_lab] = {'spiked':{'avg':[], 'sem':[]}}
             
             # avg spiking data at each time point and sem
-            for spike_lab in spike_props:
-                subtract = 0
-                if spike_lab == 'first_spike':
-                    subtract = HFI_info['stim_t']
-                ctrl_spiking[clus_lab][spike_lab]['avg'].append(np.mean( \
-                   [x for x in ctrl_data['all'][clus_lab][spike_lab] if x != []]) - subtract)
-                ctrl_spiking[clus_lab][spike_lab]['sem'].append(stats.sem( \
-                   [x for x in ctrl_data['all'][clus_lab][spike_lab] if x != []]))
+            ctrl_spiking[clus_lab]['spiked']['avg'].append(np.mean(ctrl_data['all'][clus_lab]['spiked']))
+            ctrl_spiking[clus_lab]['spiked']['sem'].append(stats.sem(ctrl_data['all'][clus_lab]['spiked']))
             
         
         # plot voltage traces =====
@@ -270,14 +259,9 @@ else: # ===================
                            'spike_n':{'avg':[], 'sem':[]}}
                 
                 # avg spiking data at each time point and sem
-                for spike_lab in spike_props:
-                    subtract = 0
-                    if spike_lab == 'first_spike':
-                        subtract = HFI_info['stim_t']
-                    spiking[clus_lab][ACh_lab][spike_lab]['avg'].append(np.mean( \
-                       [x for x in data['all'][clus_lab][ACh_lab][spike_lab] if x != []]) - subtract)
-                    spiking[clus_lab][ACh_lab][spike_lab]['sem'].append(stats.sem( \
-                       [x for x in data['all'][clus_lab][ACh_lab][spike_lab] if x != []]))
+                spiking[clus_lab][ACh_lab]['spiked']['avg'].append(np.mean(data['all'][clus_lab][ACh_lab]['spiked_avg']))
+                spiking[clus_lab][ACh_lab]['spiked']['sem'].append(stats.sem(data['all'][clus_lab][ACh_lab]['spiked_avg']))
+                
                 '''
                 for k in range(len(model_iterator)*(n_rounds)):
                     if data['all'][clus_lab][ACh_lab]['spiked'][k] == 1:
@@ -312,53 +296,53 @@ else: # ===================
                 '''
     
     # plot spiking data =====
-    if len(model_iterator) > 1 or n_rounds > 1:
+    #if len(model_iterator) > 1 or n_rounds > 1:
         
-        # baseline firing rate for HFI without clustered inputs
-        baseline = cf.load_data('Data/{}_HFI[1]+0_baseline.json'.format(cell_type))
-        baseline_spiking = baseline['all']['proximal dend']['spiked']
-        baseline_spiking.extend(baseline['all']['distal dend']['spiked'])
-        baseline_spiking = np.mean(baseline_spiking)
+    # baseline firing rate for HFI without clustered inputs
+    baseline = cf.load_data('Data/{}_HFI[1]+0_baseline.json'.format(cell_type))
+    baseline_spiking = baseline['all']['proximal dend']['spiked']
+    baseline_spiking.extend(baseline['all']['distal dend']['spiked'])
+    baseline_spiking = np.mean(baseline_spiking)
+    
+    for j, ACh_lab in enumerate(ACh_targets):
+    
+        use_clus = 0
+        if ACh_lab == 'on-site':
+            use_clus = 1
         
-        for j, ACh_lab in enumerate(ACh_targets):
         
-            use_clus = 0
-            if ACh_lab == 'on-site':
-                use_clus = 1
-            
-            
-            # plots spike probability
-            plt.figure()
-            axs = plt.subplot(111)
-            axs.set_title(cell_type + ', {}'.format(ACh_targets[j]))
-            
-            # modulation data
-            for i, clus_lab in enumerate(clus_labels):
-                if use_clus:
-                    ACh_lab = clus_lab
-                axs.errorbar(delta, spiking[clus_lab][ACh_lab]['spiked']['avg'], \
-                             yerr=spiking[clus_lab][ACh_lab]['spiked']['sem'], color=colors[i], 
-                             label=labels[i], capsize=5)
-            
-            # control data
-            for i, clus_lab in enumerate(clus_labels):
-                '''
-                axs.errorbar(delta, ctrl_spiking[clus_lab]['spiked']['avg'], \
-                             yerr=ctrl_spiking[clus_lab]['spiked']['sem'], color=colors[i], alpha=.5,
-                             label=ctrl_labels[i], capsize=5)
-                '''
-                axs.plot(delta, ctrl_spiking[clus_lab]['spiked']['avg'], color=colors[i], alpha=.5, label=ctrl_labels[i])
-            
-            # baseline data
-            axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
-            
-            axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
-            axs.set_xlabel('delta (ms)')
-            axs.set_ylabel('spike probability')
-            axs.spines['right'].set_visible(False)
-            axs.spines['top'].set_visible(False)
-            axs.set_ylim(0,1)
-            axs.legend()
-            
-            plt.tight_layout()
+        # plots spike probability
+        plt.figure()
+        axs = plt.subplot(111)
+        axs.set_title(cell_type + ', {}'.format(ACh_targets[j]))
+        
+        # modulation data
+        for i, clus_lab in enumerate(clus_labels):
+            if use_clus:
+                ACh_lab = clus_lab
+            axs.errorbar(delta, spiking[clus_lab][ACh_lab]['spiked']['avg'], \
+                         yerr=spiking[clus_lab][ACh_lab]['spiked']['sem'], color=colors[i], 
+                         label=labels[i], capsize=5)
+        
+        # control data
+        for i, clus_lab in enumerate(clus_labels):
+            '''
+            axs.errorbar(delta, ctrl_spiking[clus_lab]['spiked']['avg'], \
+                         yerr=ctrl_spiking[clus_lab]['spiked']['sem'], color=colors[i], alpha=.5,
+                         label=ctrl_labels[i], capsize=5)
+            '''
+            axs.plot(delta, ctrl_spiking[clus_lab]['spiked']['avg'], color=colors[i], alpha=.5, label=ctrl_labels[i])
+        
+        # baseline data
+        axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
+        
+        axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
+        axs.set_xlabel('delta (ms)')
+        axs.set_ylabel('spike probability')
+        axs.spines['right'].set_visible(False)
+        axs.spines['top'].set_visible(False)
+        axs.set_ylim(0,1)
+        axs.legend()
+        
+        plt.tight_layout()
     

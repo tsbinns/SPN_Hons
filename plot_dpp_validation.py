@@ -33,9 +33,6 @@ if not HFI:
     target_labels = clus_info['label']
     model_iterator = data['meta']['iterations']
     n_rounds = data['meta']['n rounds']
-    avg = data['meta']['avg']
-    if avg:
-        n_rounds = 1
     
     labels = ['proximal dendrite', 'distal dendrite']
     
@@ -78,27 +75,27 @@ if not HFI:
     plt.tight_layout(True)
     
     # plot duration and amplitude data =====
-    if len(model_iterator) > 1 or n_rounds > 1:
+    #if len(model_iterator) > 1 or n_rounds > 1:
         
-        fig, axs = plt.subplots(1,2)
-        fig.suptitle(cell_type)
-        plt.tight_layout(True)
-        
-        # plots duration data
-        axs[0].boxplot([data['all'][target_labels[0]]['dur'],data['all'][target_labels[1]]['dur']],widths=.6)
-        axs[0].set_xticklabels(labels)
-        axs[0].set_ylabel('duration (ms)')
-        axs[0].spines['right'].set_visible(False)
-        axs[0].spines['top'].set_visible(False)
-        plt.tight_layout(True)
-        
-        # plots amplitude data
-        axs[1].boxplot([data['all'][target_labels[0]]['amp'],data['all'][target_labels[1]]['amp']],widths=.6)
-        axs[1].set_xticklabels(labels)
-        axs[1].set_ylabel('amplitude (mV)')
-        axs[1].spines['right'].set_visible(False)
-        axs[1].spines['top'].set_visible(False)
-        plt.tight_layout(True)
+    fig, axs = plt.subplots(1,2)
+    fig.suptitle(cell_type)
+    plt.tight_layout(True)
+    
+    # plots duration data
+    axs[0].boxplot([data['all'][target_labels[0]]['dur'],data['all'][target_labels[1]]['dur']],widths=.6)
+    axs[0].set_xticklabels(labels)
+    axs[0].set_ylabel('duration (ms)')
+    axs[0].spines['right'].set_visible(False)
+    axs[0].spines['top'].set_visible(False)
+    plt.tight_layout(True)
+    
+    # plots amplitude data
+    axs[1].boxplot([data['all'][target_labels[0]]['amp'],data['all'][target_labels[1]]['amp']],widths=.6)
+    axs[1].set_xticklabels(labels)
+    axs[1].set_ylabel('amplitude (mV)')
+    axs[1].spines['right'].set_visible(False)
+    axs[1].spines['top'].set_visible(False)
+    plt.tight_layout(True)
 
 
 else:
@@ -135,9 +132,6 @@ else:
         target_labels = clus_info['label']
         model_iterator = data['meta']['iterations']
         n_rounds = data['meta']['n rounds']
-        avg = data['meta']['avg']
-        if avg:
-            n_rounds = 1
         
         labels = ['proximal dendrite', 'distal dendrite']
         
@@ -150,19 +144,20 @@ else:
             # avg firing probability at each time point
             if d == 0:
                 spiking['spiked']['avg'][lab] = []
-            spiking['spiked']['avg'][lab].append(np.mean(data['all'][lab]['spiked']))
+            spiking['spiked']['avg'][lab].append(np.mean(data['all'][lab]['spiked_avg']))
             
             # sem of firing probability at each time point
             if d == 0:
                 spiking['spiked']['sem'][lab] = []
-            spiking['spiked']['sem'][lab].append(stats.sem(data['all'][lab]['spiked']))
+            spiking['spiked']['sem'][lab].append(stats.sem(data['all'][lab]['spiked_avg']))
                 
-            for j in range(len(model_iterator)*(n_rounds)):
-                if data['all'][lab]['spiked'][j] == 1:
-                    col = colors[i]
-                else:
-                    col = 'grey'
-                axs[i].plot(data['meta']['tm'],data['all'][lab]['vm'][j], color=col)
+            for j in range(len(model_iterator)):
+                for k in range(n_rounds):
+                    if data['all'][lab]['spiked'][j][k] == 1:
+                        col = colors[i]
+                    else:
+                        col = 'grey'
+                    axs[i].plot(data['meta']['tm'],data['all'][lab]['vm'][j][k], color=col)
          
         for i, lab in enumerate(target_labels):
             
@@ -189,32 +184,32 @@ else:
             
     
     # plot spiking data =====
-    if len(model_iterator) > 1 or n_rounds > 1:
+    #if len(model_iterator) > 1 or n_rounds > 1:
         
-        baseline = cf.load_data('Data/{}_HFI[1]+0_baseline.json'.format(cell_type))
-        baseline_spiking = baseline['all']['proximal dend']['spiked']
-        baseline_spiking.extend(baseline['all']['distal dend']['spiked'])
-        baseline_spiking = np.mean(baseline_spiking)
-        
-        # plots spike probability
-        plt.figure()
-        axs = plt.subplot(111)
-        
-        # plots spike probability data
-        for i, lab in enumerate(target_labels):
-            axs.errorbar(delta, spiking['spiked']['avg'][lab], yerr=spiking['spiked']['sem'][lab], color=colors[i], 
-                         label=labels[i], capsize=5)
-        axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
-           
-        axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
-        axs.set_xlabel('delta (ms)')
-        axs.set_ylabel('spike probability')
-        axs.spines['right'].set_visible(False)
-        axs.spines['top'].set_visible(False)
-        axs.set_ylim(0,1)
-        axs.legend()
-        
-        plt.tight_layout()
+    baseline = cf.load_data('Data/{}_HFI[1]+0_baseline.json'.format(cell_type))
+    baseline_spiking = baseline['all']['proximal dend']['spiked']
+    baseline_spiking.extend(baseline['all']['distal dend']['spiked'])
+    baseline_spiking = np.mean(baseline_spiking)
+    
+    # plots spike probability
+    plt.figure()
+    axs = plt.subplot(111)
+    
+    # plots spike probability data
+    for i, lab in enumerate(target_labels):
+        axs.errorbar(delta, spiking['spiked']['avg'][lab], yerr=spiking['spiked']['sem'][lab], color=colors[i], 
+                     label=labels[i], capsize=5)
+    axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
+       
+    axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
+    axs.set_xlabel('delta (ms)')
+    axs.set_ylabel('spike probability')
+    axs.spines['right'].set_visible(False)
+    axs.spines['top'].set_visible(False)
+    axs.set_ylim(0,1)
+    axs.legend()
+    
+    plt.tight_layout()
         
     
     

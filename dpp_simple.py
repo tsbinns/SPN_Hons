@@ -151,7 +151,7 @@ for i in range(len(iterations)):
     
     for lab in clus_info['label']:
         
-        data[i]['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[]}
+        data[i]['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[], 'spiked_avg':[]}
         
         for j in range(n_rounds):
             
@@ -161,15 +161,13 @@ for i in range(len(iterations)):
                 data[i]['all'][lab]['amp'].append(data[i][j][lab]['amp'])  
             if spike:
                 data[i]['all'][lab]['spiked'].append(data[i][j][lab]['spiked'])
-            
+        
+        if spike:
+            data[i]['all'][lab]['spiked_avg'] = np.mean(data[i]['all'][lab]['spiked'],axis=0).tolist()
         if avg_over_rounds:
-            
-            data[i]['all'][lab]['vm'] = np.ndarray.tolist(np.mean(data[i]['all'][lab]['vm'],axis=0))
             if dur_and_amp:
                 data[i]['all'][lab]['dur'] = np.mean(data[i]['all'][lab]['dur'],axis=0).tolist()
                 data[i]['all'][lab]['amp'] = np.mean(data[i]['all'][lab]['amp'],axis=0).tolist()
-            if spike:
-                data[i]['all'][lab]['spiked'] = np.mean(data[i]['all'][lab]['spiked'],axis=0).tolist()
             
     data[i]['all']['meta'] = data[i][j]['meta']
         
@@ -179,7 +177,7 @@ data['all'] = {}
 
 for lab in clus_info['label']:
     
-    data['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[]}    
+    data['all'][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[], 'spiked_avg':[]}    
 
     for i in range(len(iterations)):
         
@@ -189,6 +187,7 @@ for lab in clus_info['label']:
             data['all'][lab]['amp'].append(data[i]['all'][lab]['amp'])
         if spike:
             data['all'][lab]['spiked'].append(data[i]['all'][lab]['spiked'])
+            data['all'][lab]['spiked_avg'].append(data[i]['all'][lab]['spiked_avg'])
             
 
 # collates meta data
@@ -210,6 +209,7 @@ if not HFI:
     for lab in clus_info['label']:
         data['avg'][lab] = {}
         data['avg'][lab]['vm'] = np.ndarray.tolist(np.mean(data['all'][lab]['vm'],axis=0))
+        data['avg'][lab]['vm'] = np.ndarray.tolist(np.mean(data['avg'][lab]['vm'],axis=0))
         data['avg'][lab]['dur'] = float(np.mean(data['all'][lab]['dur']))
         data['avg'][lab]['amp'] = float(np.mean(data['all'][lab]['amp']))
         
