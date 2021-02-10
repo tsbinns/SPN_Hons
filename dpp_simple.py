@@ -47,11 +47,14 @@ if cell_type != 'dspn' and cell_type != 'ispn':
  
 #model_iterator = list(range(specs[cell_type]['N']))
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
-model_iterator = [0]
+model_iterator = [0,1]
 
 iterations = model_iterator.copy()
 
-n_rounds = 1
+trim_data = True
+
+n_rounds = 2
+avg_over_rounds = True
 model_round = []
 for r in range(n_rounds):
     for i in range(len(iterations)):
@@ -74,7 +77,7 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
 noise = 1
 HFI = 1
-HFI_delay = 0
+HFI_delay = 100
 dur_and_amp = 0
 spike = 1
 
@@ -158,10 +161,17 @@ for i in range(len(iterations)):
                 data[i]['all'][lab]['amp'].append(data[i][j][lab]['amp'])  
             if spike:
                 data[i]['all'][lab]['spiked'].append(data[i][j][lab]['spiked'])
-                data[i]['all'][lab]['first_spike'].append(data[i][j][lab]['first_spike'])
-                data[i]['all'][lab]['spike_n'].append(data[i][j][lab]['spike_n'])
             
-            data[i]['all']['meta'] = data[i][j]['meta']
+        if avg_over_rounds:
+            
+            data[i]['all'][lab]['vm'] = np.ndarray.tolist(np.mean(data[i]['all'][lab]['vm'],axis=0))
+            if dur_and_amp:
+                data[i]['all'][lab]['dur'] = np.mean(data[i]['all'][lab]['dur'],axis=0).tolist()
+                data[i]['all'][lab]['amp'] = np.mean(data[i]['all'][lab]['amp'],axis=0).tolist()
+            if spike:
+                data[i]['all'][lab]['spiked'] = np.mean(data[i]['all'][lab]['spiked'],axis=0).tolist()
+            
+    data[i]['all']['meta'] = data[i][j]['meta']
         
 
 # collates data across cell iterations
@@ -173,19 +183,17 @@ for lab in clus_info['label']:
 
     for i in range(len(iterations)):
         
-        data['all'][lab]['vm'].extend(data[i]['all'][lab]['vm'])
+        data['all'][lab]['vm'].append(data[i]['all'][lab]['vm'])
         if dur_and_amp:
-            data['all'][lab]['dur'].extend(data[i]['all'][lab]['dur'])
-            data['all'][lab]['amp'].extend(data[i]['all'][lab]['amp'])
+            data['all'][lab]['dur'].append(data[i]['all'][lab]['dur'])
+            data['all'][lab]['amp'].append(data[i]['all'][lab]['amp'])
         if spike:
-            data['all'][lab]['spiked'].extend(data[i]['all'][lab]['spiked'])
-            data['all'][lab]['first_spike'].extend(data[i]['all'][lab]['first_spike'])
-            data['all'][lab]['spike_n'].extend(data[i]['all'][lab]['spike_n'])
+            data['all'][lab]['spiked'].append(data[i]['all'][lab]['spiked'])
             
 
 # collates meta data
 data['meta'] = {'tm':data[i]['all']['meta']['tm'], 'cell type':cell_type, 'iterations':iterations,
-                       'n rounds':n_rounds, 'clustered':clus_info}
+                       'n rounds':n_rounds, 'clustered':clus_info, 'avg':avg_over_rounds}
 if noise:
     info = cf.params_for_input(cell_type, 'noise')
     data['meta']['noise'] = info['noise']
@@ -212,6 +220,13 @@ if not HFI:
 # ===== save collated data =====
 folder = 'Data/'
 name = '{}_HFI[{}]+{}_validation.json'.format(cell_type,HFI,HFI_delay)
+
+if trim_data:
+    keys = ['all','meta']
+    if not HFI:
+        keys.append('avg')
+    data = cf.trim_data(data, keep_keys=keys)
+
 cf.save_data(data,folder+name)
 print('Saving data as {}'.format(name))
 

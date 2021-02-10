@@ -71,9 +71,11 @@ if not modulation:
     
 else:
     
+    cell_type = 'ispn'
+    
     # load data
-    data = cf.load_data('Data/ispn_HFI[0]+0_modulation.json')
-    ctrl_data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
+    data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))
+    ctrl_data = cf.load_data('Data/{}_HFI[0]+0_validation.json'.format(cell_type))
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
     
@@ -137,6 +139,9 @@ else:
     
     data['stats']['diff'] = {}
     
+    
+    # tests whether duration and amplitude values for each modulation target are signficantly different to control values
+    
     for i, clus_lab in enumerate(clus_labels):
         
         data['stats']['diff'][clus_lab] = {}
@@ -162,6 +167,31 @@ else:
                 data['all'][clus_lab][ACh_lab]['amp']])[-1]
             data['stats']['diff'][clus_lab][ACh_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
     
+
+    # tests whether duration and amplitude values for each modulation target are signficantly different to each other for
+        # proximal and distal clustered stimulation
+        
+    ACh_targets = ['on-site']
+    ACh_targets.extend(ACh_labels)
     
+    variables = ['dur', 'amp']
+    
+    for i, tar in enumerate(ACh_targets):
+        
+        data['stats']['diff'][tar] = {'dur':{}, 'amp':{}}
+        
+        if tar == 'on-site':
+            for var in variables:
+                data['stats']['diff'][tar][var]['result'] = stats.anderson_ksamp([data['all'][clus_labels[0]][clus_labels[0]][var],
+                     data['all'][clus_labels[1]][clus_labels[1]][var]])[-1]
+                data['stats']['diff'][tar][var]['label'] = 'Anderson-Darling; proximal:distal duration'
+            
+        else:
+            for var in variables:
+                data['stats']['diff'][tar][var]['result'] = stats.anderson_ksamp([data['all'][clus_labels[0]][tar][var],
+                     data['all'][clus_labels[1]][tar][var]])[-1]
+                data['stats']['diff'][tar][var]['label'] = 'Anderson-Darling; proximal:distal duration'
+        
+
     
     

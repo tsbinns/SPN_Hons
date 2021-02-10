@@ -111,7 +111,7 @@ def get_dists(cell,
 
 def binary_to_table(x, y):
     '''
-    Convert binary data x and y into a contingency table.
+    Convert lists of binary data x and y into a 2x2 contingency table.
     
     INPUT(S):
         - x: vector of binary data. Vector length = number of observations of a variable in condition 1 [list of 1s and 0s]
@@ -121,15 +121,23 @@ def binary_to_table(x, y):
         - table: 2x2 array where: [0,0] is the number of times where the corresponding values in x and y are 1;
             [0,1] is the number of times where the corresponding values in x and y are 1 and 0, respectively;
             [1,0] is the number of times where the corresponding values in x and y are 0 and 1, respectively;
-            [1,1] is the number of times where the corresponding values in x and y are 0
+            [1,1] is the number of times where the corresponding values in x and y are 0 [2x2 numpy array]
             
     Thomas Binns (author), 08/02/21
     '''
     
+    # ===== error checking =====
     if len(x) != len(y):
         raise ValueError("The lengths of x and y must match.")
+        
+    if max(x) > 1 or max(y) > 1:
+        raise ValueError('x and y must only contain 0s and 1s.')
+        
+    if not all(type(val) is int for val in x) or not all(type(val) is int for val in y):
+        raise ValueError('x and y must only contain integers.')
     
     
+    # ===== creates table =====
     table = np.array([[0,0],[0,0]])
     
     for i, val in enumerate(x):
@@ -149,6 +157,7 @@ def binary_to_table(x, y):
 
 
 
+
 def McNemar(table):
     '''
     Runs the McNemar test to determine if binary data is significantly different.
@@ -157,7 +166,7 @@ def McNemar(table):
         - table: data in a contingency table form [2x2 array] (use binary_to_table function)
         
     OUTPUT(S):
-        - p-value of the McNemar test
+        - p-value of the McNemar test [float]
         
     NOTES:
         - see: https://aaronschlegel.me/mcnemars-test-paired-data-python.html; 
@@ -166,10 +175,60 @@ def McNemar(table):
     Thomas Binns (author), 08/02/21
     '''
     
+    # ===== error checking =====
+    if np.shape(table) != (2,2):
+        raise ValueError("The table must be a 2x2 array.")
+        
+        
+    # ===== performs test =====
     x2_stat = (table[0, 1] - table[1, 0]) ** 2 / (table[0, 1] + table[1, 0])
     return stats.chi2.sf(x2_stat, 1)
 
 
+
+
+def trim_data(data, keep_keys=['all','avg','meta'], same_order=True):
+    '''
+    Removes unwanted keys from the supplied dictionary.
+    
+    INPUT(S):
+        - data: dictionary to trim [dict]
+        - keys: keys of the dictionary to keep [list]
+        - same_order: whether to have keys in the returned dictionary occur in the same order as the original dictionary (True)
+            or to have the keys on the returned dictionary occur in the order they are given in 'keep_keys' (False) [bool]
+        
+    OUTPUT(S):
+        - trimmed_data: dictionary with only the requested keys remaining [dict]
+        
+    Thomas Binns (author), 10/02/21
+    '''
+    
+    # ===== error checking =====
+    if keep_keys == []:
+        raise ValueError("At least one key of the data dictionary must be kept, but 'keep_keys' was empty.")
+    
+    data_keys = list(data.keys())
+    for key in keep_keys:
+        if key not in data_keys:
+            raise ValueError("The requested key to keep '{}' is not a key in the data dictionary.".format(key))
+            
+    
+    # ===== trims data =====
+    trimmed_data = {}
+    if same_order:
+        for key in data_keys:
+            if key in keep_keys:
+                trimmed_data[key] = data[key]
+    else:
+        for key in keep_keys:
+            trimmed_data[key] = data[key]
+        
+        
+    return trimmed_data
+    
+    
+    
+    
 
 def HF_input_arrangement(cell, exclude=[], n_inputs=20):
     '''
@@ -248,7 +307,7 @@ def norm_dist(data, alpha=.05):
     norm[2] = lilliefors(data)[1]
     
     for i, x in enumerate(norm):
-        if x < alpha:
+        if x >= alpha:
             norm[i] = 1
         else:
             norm[i] = 0

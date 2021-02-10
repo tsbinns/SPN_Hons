@@ -33,6 +33,9 @@ if not HFI:
     target_labels = clus_info['label']
     model_iterator = data['meta']['iterations']
     n_rounds = data['meta']['n rounds']
+    avg = data['meta']['avg']
+    if avg:
+        n_rounds = 1
     
     labels = ['proximal dendrite', 'distal dendrite']
     
@@ -101,7 +104,7 @@ if not HFI:
 else:
     
     colors = (plt.rcParams['axes.prop_cycle']).by_key()['color']
-    delta = list(np.arange(0,100+1,10))
+    delta = list(np.arange(0,100+1,20))
     delta_labels = []
     spiking = {'spiked':{}, 'first_spike':{}, 'spike_n':{}}
     spiking['spiked'] = {'avg':{}, 'sem':{}}
@@ -112,7 +115,7 @@ else:
     for d in range(len(delta)):
         
         # load data
-        data = cf.load_data('Data/ispn_HFI[1]+{}_validation.json'.format(delta[d]))
+        data = cf.load_data('Data/dspn_HFI[1]+{}_validation.json'.format(delta[d]))
         
         delta_labels.append('+{}'.format(delta[d]))
         
@@ -132,6 +135,9 @@ else:
         target_labels = clus_info['label']
         model_iterator = data['meta']['iterations']
         n_rounds = data['meta']['n rounds']
+        avg = data['meta']['avg']
+        if avg:
+            n_rounds = 1
         
         labels = ['proximal dendrite', 'distal dendrite']
         
@@ -144,22 +150,14 @@ else:
             # avg firing probability at each time point
             if d == 0:
                 spiking['spiked']['avg'][lab] = []
-                spiking['first_spike']['avg'][lab] = []
-                spiking['spike_n']['avg'][lab] = []
             spiking['spiked']['avg'][lab].append(np.mean(data['all'][lab]['spiked']))
-            spiking['first_spike']['avg'][lab].append(np.mean([x for x in data['all'][lab]['first_spike'] if x])-HFI_info['stim_t'])
-            spiking['spike_n']['avg'][lab].append(np.mean([x for x in data['all'][lab]['spike_n'] if x]))
             
             # sem of firing probability at each time point
             if d == 0:
                 spiking['spiked']['sem'][lab] = []
-                spiking['first_spike']['sem'][lab] = []
-                spiking['spike_n']['sem'][lab] = []
             spiking['spiked']['sem'][lab].append(stats.sem(data['all'][lab]['spiked']))
-            spiking['first_spike']['sem'][lab].append(stats.sem([x for x in data['all'][lab]['first_spike'] if x]))
-            spiking['spike_n']['sem'][lab].append(stats.sem([x for x in data['all'][lab]['spike_n'] if x]))
                 
-            for j in range(len(data['meta']['iterations'])*data['meta']['n rounds']):
+            for j in range(len(model_iterator)*(n_rounds)):
                 if data['all'][lab]['spiked'][j] == 1:
                     col = colors[i]
                 else:
@@ -187,7 +185,7 @@ else:
             axs[i].set_xticks(np.arange(stim_t+pre_t, stop_t+delta[d]+(stim_n*isi)+1, step=50))
             axs[i].set_xticklabels(np.arange(pre_t,stop_t-stim_t+(stim_n*isi)+1+delta[d],step=50))
             
-            plt.tight_layout(True)
+            plt.tight_layout()
             
     
     # plot spiking data =====
@@ -214,43 +212,10 @@ else:
         axs.spines['right'].set_visible(False)
         axs.spines['top'].set_visible(False)
         axs.set_ylim(0,1)
+        axs.legend()
         
-        plt.tight_layout(True)
+        plt.tight_layout()
         
-        
-        # plots time of first spike
-        plt.figure()
-        axs = plt.subplot(111)
-        
-        # plots spike probability data
-        for i, lab in enumerate(target_labels):
-            axs.errorbar(delta, spiking['first_spike']['avg'][lab], yerr=spiking['first_spike']['sem'][lab], color=colors[i], 
-                         label=labels[i], capsize=5)
-            
-        axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
-        axs.set_xlabel('delta (ms)')
-        axs.set_ylabel('time to first spike (ms)')
-        axs.spines['right'].set_visible(False)
-        axs.spines['top'].set_visible(False)
-        
-        plt.tight_layout(True)
-        
-        
-        # plots time of first spike
-        plt.figure()
-        axs = plt.subplot(111)
-        
-        # plots spike probability data
-        for i, lab in enumerate(target_labels):
-            axs.errorbar(delta, spiking['spike_n']['avg'][lab], yerr=spiking['spike_n']['sem'][lab], color=colors[i], 
-                         label=labels[i], capsize=5)
-            
-        axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
-        axs.set_xlabel('delta (ms)')
-        axs.set_ylabel('number of spikes')
-        axs.spines['right'].set_visible(False)
-        axs.spines['top'].set_visible(False)
-        
-        plt.tight_layout(True)
+    
     
         

@@ -33,6 +33,7 @@ if not modulation:
     
     # gets stats
     spike_data['stats'] = {}
+    '''
     for r in delta:
         spike_data['stats'][r] = {}
         
@@ -46,8 +47,8 @@ if not modulation:
             spike_data['stats'][r][clus_lab]['first_spike'] = cf.norm_dist(spike_data[r][clus_lab]['first_spike'])
             # num spikes data
             spike_data['stats'][r][clus_lab]['spike_n'] = cf.norm_dist(spike_data[r][clus_lab]['spike_n'])
+            
         
-    
     # plot histograms
     for i, clus_lab in enumerate(clus_labels):
         
@@ -65,7 +66,7 @@ if not modulation:
             axs[1,d].set_title('num,{},{}'.format(delt, str(spike_data['stats'][delt][clus_lab]['spike_n'])))
         
         plt.tight_layout()
-    
+    '''
     
     # tests on data =====
     
@@ -76,6 +77,7 @@ if not modulation:
         # tests whether number of cells spiking significantly different
         tab = cf.binary_to_table(spike_data[delt][clus_labels[0]]['spiked'],spike_data[delt][clus_labels[1]]['spiked'])
         spike_data['stats']['diff']['spiked'][delt] = cf.McNemar(tab)
+        '''
         # tests whether time to first spike significantly different
         spike_data['stats']['diff']['first_spike'][delt] = test.test(spike_data[delt][clus_labels[0]]['first_spike'], \
                   spike_data[delt][clus_labels[1]]['first spike'])
@@ -83,6 +85,7 @@ if not modulation:
         # tests whether number of spikes significantly different
         spike_data['stats']['diff']['spike_n'][delt] = test.test(spike_data[delt][clus_labels[0]]['spike_n'], \
                   spike_data[delt][clus_labels[1]]['spike_n'])
+        '''
         
 
 else:

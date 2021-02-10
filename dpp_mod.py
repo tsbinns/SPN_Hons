@@ -50,7 +50,10 @@ model_iterator = list(range(specs[cell_type]['N']))
 
 iterations = model_iterator.copy()
 
-n_rounds = 1
+trim_data = True
+
+n_rounds = 5
+avg_over_rounds = True
 model_round = []
 for r in range(n_rounds):
     for i in range(len(iterations)):
@@ -151,7 +154,7 @@ for i in range(len(iterations)):
         
         data[i]['all'][lab] = {}
         data[i]['all'][lab][lab] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[]}
-        
+            
         for j in range(n_rounds):
             
             data[i]['all'][lab][lab]['vm'].append(data[i][j][lab][lab]['vm'])
@@ -160,8 +163,15 @@ for i in range(len(iterations)):
                 data[i]['all'][lab][lab]['amp'].append(data[i][j][lab][lab]['amp'])  
             if spike:
                 data[i]['all'][lab][lab]['spiked'].append(data[i][j][lab][lab]['spiked'])
-                data[i]['all'][lab][lab]['first_spike'].append(data[i][j][lab][lab]['first_spike'])
-                data[i]['all'][lab][lab]['spike_n'].append(data[i][j][lab][lab]['spike_n'])
+        
+        if avg_over_rounds:
+            
+            data[i]['all'][lab][lab]['vm'] = np.ndarray.tolist(np.mean(data[i]['all'][lab][lab]['vm'],axis=0))
+            if dur_and_amp:
+                data[i]['all'][lab][lab]['dur'] = np.mean(data[i]['all'][lab][lab]['dur']).tolist()
+                data[i]['all'][lab][lab]['amp'] = np.mean(data[i]['all'][lab][lab]['amp']).tolist()
+            if spike:
+                data[i]['all'][lab][lab]['spiked'] = np.mean(data[i]['all'][lab][lab]['spiked']).tolist()
                 
         for mod in ACh_info['label']:
             
@@ -175,9 +185,15 @@ for i in range(len(iterations)):
                     data[i]['all'][lab][mod]['amp'].append(data[i][j][lab][mod]['amp'])  
                 if spike:
                     data[i]['all'][lab][mod]['spiked'].append(data[i][j][lab][mod]['spiked'])
-                    data[i]['all'][lab][mod]['first_spike'].append(data[i][j][lab][mod]['first_spike'])
-                    data[i]['all'][lab][mod]['spike_n'].append(data[i][j][lab][mod]['spike_n'])
             
+            if avg_over_rounds:
+            
+                data[i]['all'][lab][mod]['vm'] = np.ndarray.tolist(np.mean(data[i]['all'][lab][mod]['vm'],axis=0))
+                if dur_and_amp:
+                    data[i]['all'][lab][mod]['dur'] = np.mean(data[i]['all'][lab][mod]['dur']).tolist()
+                    data[i]['all'][lab][mod]['amp'] = np.mean(data[i]['all'][lab][mod]['amp']).tolist()
+                if spike:
+                    data[i]['all'][lab][mod]['spiked'] = np.mean(data[i]['all'][lab][mod]['spiked']).tolist()
             
         data[i]['all']['meta'] = data[i][j]['meta']
         
@@ -192,14 +208,12 @@ for lab in clus_info['label']:
 
     for i in range(len(iterations)):
         
-        data['all'][lab][lab]['vm'].extend(data[i]['all'][lab][lab]['vm'])
+        data['all'][lab][lab]['vm'].append(data[i]['all'][lab][lab]['vm'])
         if dur_and_amp:
-            data['all'][lab][lab]['dur'].extend(data[i]['all'][lab][lab]['dur'])
-            data['all'][lab][lab]['amp'].extend(data[i]['all'][lab][lab]['amp'])
+            data['all'][lab][lab]['dur'].append(data[i]['all'][lab][lab]['dur'])
+            data['all'][lab][lab]['amp'].append(data[i]['all'][lab][lab]['amp'])
         if spike:
-            data['all'][lab][lab]['spiked'].extend(data[i]['all'][lab][lab]['spiked'])
-            data['all'][lab][lab]['first_spike'].extend(data[i]['all'][lab][lab]['first_spike'])
-            data['all'][lab][lab]['spike_n'].extend(data[i]['all'][lab][lab]['spike_n'])
+            data['all'][lab][lab]['spiked'].append(data[i]['all'][lab][lab]['spiked'])
             
     for mod in ACh_info['label']:
         
@@ -207,19 +221,17 @@ for lab in clus_info['label']:
     
         for i in range(len(iterations)):
             
-            data['all'][lab][mod]['vm'].extend(data[i]['all'][lab][mod]['vm'])
+            data['all'][lab][mod]['vm'].append(data[i]['all'][lab][mod]['vm'])
             if dur_and_amp:
-                data['all'][lab][mod]['dur'].extend(data[i]['all'][lab][mod]['dur'])
-                data['all'][lab][mod]['amp'].extend(data[i]['all'][lab][mod]['amp'])
+                data['all'][lab][mod]['dur'].append(data[i]['all'][lab][mod]['dur'])
+                data['all'][lab][mod]['amp'].append(data[i]['all'][lab][mod]['amp'])
             if spike:
-                data['all'][lab][mod]['spiked'].extend(data[i]['all'][lab][mod]['spiked'])
-                data['all'][lab][mod]['first_spike'].extend(data[i]['all'][lab][mod]['first_spike'])
-                data['all'][lab][mod]['spike_n'].extend(data[i]['all'][lab][mod]['spike_n'])
+                data['all'][lab][mod]['spiked'].append(data[i]['all'][lab][mod]['spiked'])
             
 
 # collates meta data
 data['meta'] = {'tm':data[i]['all']['meta']['tm'], 'cell type':cell_type, 'iterations':iterations,
-                       'n rounds':n_rounds, 'clustered':clus_info, 'ACh info':ACh_info}
+                       'n rounds':n_rounds, 'clustered':clus_info, 'ACh info':ACh_info, 'avg':avg_over_rounds}
 if noise:
     info = cf.params_for_input(cell_type, 'noise')
     data['meta']['noise'] = info['noise']
@@ -252,6 +264,13 @@ if not HFI:
 # ===== save collated data =====
 folder = 'Data/'
 name = '{}_HFI[{}]+{}_modulation.json'.format(cell_type,HFI,HFI_delay)
+
+if trim_data:
+    keys = ['all','meta']
+    if not HFI:
+        keys.append('avg')
+    data = cf.trim_data(data, keep_keys=keys)
+
 cf.save_data(data,folder+name)
 print('Saving data as {}'.format(name))
 
