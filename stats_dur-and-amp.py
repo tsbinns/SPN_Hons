@@ -8,7 +8,7 @@ import matplotlib.pyplot                as plt
 
 
 
-modulation = 0
+modulation = 1
 
 
 
@@ -71,7 +71,7 @@ if not modulation:
     
 else:
     
-    cell_type = 'ispn'
+    cell_type = 'dspn'
     
     # load data
     data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))

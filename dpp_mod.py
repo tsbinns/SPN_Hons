@@ -41,12 +41,13 @@ specs = {'dspn': {
         
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
-cell_type = 'ispn'
+cell_type = 'dspn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
     
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
 model_iterator = list(range(specs[cell_type]['N']))
+#model_iterator = [0,1]
 
 iterations = model_iterator.copy()
 
@@ -74,11 +75,11 @@ with open(specs[cell_type]['lib'], 'rb') as f:
 # ===== simulate model(s) =====
 # model information to pass to simulations
 model_data = {'specs':specs[cell_type], 'cell_type':cell_type, 'model_sets':model_sets}
-noise = 0
-HFI = 0
+noise = 1
+HFI = 1
 HFI_delay = 0
-dur_and_amp = 1
-spike = 0
+dur_and_amp = 0
+spike = 1
 
 start = time.time() # for timing simulations
 
@@ -104,7 +105,7 @@ else: # use the bulleting board form
     for cell_n in range(len(model_iterator)): # scatter processes
         cell_index = model_iterator[cell_n]
         # simulate model
-        run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
+        run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]+3} #CHANGED!!!!!!!!!!!
         pc.submit(sf.dpp_ACh_modded, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         
     while pc.working(): # gather results
@@ -131,7 +132,7 @@ ACh_info = info['ACh']
 
 # collates data loaded from files
 data_all = {}
-
+n_rounds=5
 for i, iteration in enumerate(iterations):
     round_data = {}
     for r in range(n_rounds):

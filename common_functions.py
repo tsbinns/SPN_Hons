@@ -62,10 +62,10 @@ def get_dists(cell,
         - sec_type: type(s) of section(s) to get the distance for (all section 
             types by default) [list of strings]. If 'only_sec' given, 
             'sec_type' is ignored
+        - sec_x: part of the section to take distance from; middle of the 
+            section by default [number [0,1]]
         - only_sec: specific section(s) to get the distance for [list of str].
             If given, 'sec_type' is ignored
-        - origin_x: part of the section to take distance from; middle of the 
-            section by default [number [0,1]]
                     
     OUTPUT(S):
         - dists: information for each requested section containing a list of 
@@ -2569,7 +2569,7 @@ def params_for_input(cell_type, input_type):
             
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
-            #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[49]','dend[50]','dend[51]','dend[52]','dend[53]']}
+            #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[49]','dend[ge50]','dend[51]','dend[52]','dend[53]']}
         
     else:
         info['clustered']['target'] = ['dend[12]','dend[17]']

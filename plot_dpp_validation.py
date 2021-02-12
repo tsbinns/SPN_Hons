@@ -10,12 +10,12 @@ import scipy.stats          as stats
 import common_functions     as cf
      
 
-HFI = 1
+HFI = 0
 
 if not HFI:
     
     # load data
-    data = cf.load_data('Data/dspn_HFI[0]+0_validation.json')
+    data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
     
     
     # plotting =================
@@ -105,8 +105,6 @@ else:
     delta_labels = []
     spiking = {'spiked':{}, 'first_spike':{}, 'spike_n':{}}
     spiking['spiked'] = {'avg':{}, 'sem':{}}
-    spiking['first_spike'] = {'avg':{}, 'sem':{}}
-    spiking['spike_n'] = {'avg':{}, 'sem':{}}
     
     
     for d in range(len(delta)):
@@ -129,27 +127,40 @@ else:
         isi = clus_info['params']['isi']
         cell_type = data['meta']['cell type']
         targets = clus_info['target']
-        target_labels = clus_info['label']
+        clus_labels = clus_info['label']
         model_iterator = data['meta']['iterations']
         n_rounds = data['meta']['n rounds']
         
         labels = ['proximal dendrite', 'distal dendrite']
         
+        
+        # collects iteration-wise spike data into single vector (control data)
+        spiked = {}
+        for delt in delta:
+            spiked[delt] = {}
+            for clus in clus_labels:
+                spiked[delt][clus] = []
+                for i in range(len(data['all'][clus]['spiked'])):
+                    for j in range(len(data['all'][clus]['spiked'][i])):
+                        spiked[delt][clus].append(data['all'][clus]['spiked'][i][j])
+        
+        
+        
         # plot voltage traces =====
         
         fig, axs = plt.subplots(2,1)
         fig.suptitle(cell_type + ' ({})'.format(delta_labels[d]))
-        for i, lab in enumerate(target_labels):
+        for i, lab in enumerate(clus_labels):
             
             # avg firing probability at each time point
             if d == 0:
                 spiking['spiked']['avg'][lab] = []
-            spiking['spiked']['avg'][lab].append(np.mean(data['all'][lab]['spiked_avg']))
+            spiking['spiked']['avg'][lab].append(np.mean(spiked[delt][lab]))
             
             # sem of firing probability at each time point
             if d == 0:
                 spiking['spiked']['sem'][lab] = []
-            spiking['spiked']['sem'][lab].append(stats.sem(data['all'][lab]['spiked_avg']))
+            spiking['spiked']['sem'][lab].append(stats.sem(spiked[delt][lab]))
                 
             for j in range(len(model_iterator)):
                 for k in range(n_rounds):
@@ -159,7 +170,7 @@ else:
                         col = 'grey'
                     axs[i].plot(data['meta']['tm'],data['all'][lab]['vm'][j][k], color=col)
          
-        for i, lab in enumerate(target_labels):
+        for i, lab in enumerate(clus_labels):
             
             axs[i].set_xlabel('time (ms)')
             axs[i].set_ylabel('membrane potential (mV)')
@@ -167,13 +178,13 @@ else:
             axs[i].spines['right'].set_visible(False)
             axs[i].spines['top'].set_visible(False)
             
+            ylim = [axs[i].get_ylim()[0]]*2
+            
             # underscore area of clustered stimulation
-            axs[i].plot([stim_t,stim_t+stim_n*isi],[plt.ylim()[0],plt.ylim()[0]], \
-                     linewidth=5,color='red',solid_capstyle='butt')
+            axs[i].plot([stim_t,stim_t+stim_n*isi], ylim, linewidth=5,color='red',solid_capstyle='butt')
             
             # underscore area of HFI
-            axs[i].plot([HFI_info['stim_t'],HFI_info['stop_t']],[plt.ylim()[0],plt.ylim()[0]], \
-                     linewidth=5,color='grey',solid_capstyle='butt')
+            axs[i].plot([HFI_info['stim_t'],HFI_info['stop_t']], ylim, linewidth=5,color='forestgreen',solid_capstyle='butt')
             
             # ignores data at start of simulation before voltage reaches baseline
             axs[i].set_xlim(stim_t+pre_t, stop_t+delta[d]+(stim_n*isi))
@@ -196,12 +207,12 @@ else:
     axs = plt.subplot(111)
     
     # plots spike probability data
-    for i, lab in enumerate(target_labels):
+    for i, lab in enumerate(clus_labels):
         axs.errorbar(delta, spiking['spiked']['avg'][lab], yerr=spiking['spiked']['sem'][lab], color=colors[i], 
                      label=labels[i], capsize=5)
     axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
        
-    axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
+    axs.set_xticklabels([0]+delta_labels)
     axs.set_xlabel('delta (ms)')
     axs.set_ylabel('spike probability')
     axs.spines['right'].set_visible(False)

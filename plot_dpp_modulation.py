@@ -12,11 +12,11 @@ import scipy.stats          as stats
 
 
 
-HFI = 0
+HFI = 1
 
 if HFI == 0:
     
-    cell_type = 'ispn'
+    cell_type = 'dspn'
     
     # load data
     data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
@@ -179,7 +179,7 @@ if HFI == 0:
 
 else: # ===================
     
-    cell_type = 'ispn'
+    cell_type = 'dspn'
     
     colors = (plt.rcParams['axes.prop_cycle']).by_key()['color']
     delta = list(np.arange(0,100+1,20))
@@ -304,6 +304,7 @@ else: # ===================
     baseline_spiking.extend(baseline['all']['distal dend']['spiked'])
     baseline_spiking = np.mean(baseline_spiking)
     
+    '''
     for j, ACh_lab in enumerate(ACh_targets):
     
         use_clus = 0
@@ -326,17 +327,12 @@ else: # ===================
         
         # control data
         for i, clus_lab in enumerate(clus_labels):
-            '''
-            axs.errorbar(delta, ctrl_spiking[clus_lab]['spiked']['avg'], \
-                         yerr=ctrl_spiking[clus_lab]['spiked']['sem'], color=colors[i], alpha=.5,
-                         label=ctrl_labels[i], capsize=5)
-            '''
             axs.plot(delta, ctrl_spiking[clus_lab]['spiked']['avg'], color=colors[i], alpha=.5, label=ctrl_labels[i])
         
         # baseline data
         axs.plot(axs.get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
         
-        axs.set_xticklabels([0]+[lab for i, lab in enumerate(delta_labels) if not i%2])
+        axs.set_xticklabels([0]+delta_labels)
         axs.set_xlabel('delta (ms)')
         axs.set_ylabel('spike probability')
         axs.spines['right'].set_visible(False)
@@ -345,4 +341,49 @@ else: # ===================
         axs.legend()
         
         plt.tight_layout()
+    '''
     
+    fig, axs = plt.subplots(2,2)
+    fig.suptitle(cell_type)
+    
+    for j, ACh_lab in enumerate(ACh_targets):
+    
+        use_clus = 0
+        if ACh_lab == 'on-site':
+            use_clus = 1
+        
+        
+        # plots spike probability
+        pos1 = j//2
+        pos2 = j%2
+        axs[pos1,pos2].set_title(ACh_lab)
+        
+        # modulation data
+        for i, clus_lab in enumerate(clus_labels):
+            if use_clus:
+                ACh_lab = clus_lab
+            axs[pos1,pos2].errorbar(delta, spiking[clus_lab][ACh_lab]['spiked']['avg'], \
+                         yerr=spiking[clus_lab][ACh_lab]['spiked']['sem'], color=colors[i], 
+                         label=labels[i], capsize=5)
+        
+        # control data
+        for i, clus_lab in enumerate(clus_labels):
+            '''
+            axs.errorbar(delta, ctrl_spiking[clus_lab]['spiked']['avg'], \
+                         yerr=ctrl_spiking[clus_lab]['spiked']['sem'], color=colors[i], alpha=.5,
+                         label=ctrl_labels[i], capsize=5)
+            '''
+            axs[pos1,pos2].plot(delta, ctrl_spiking[clus_lab]['spiked']['avg'], color=colors[i], alpha=.5, label=ctrl_labels[i])
+        
+        # baseline data
+        axs[pos1,pos2].plot(axs[pos1,pos2].get_xlim(), [baseline_spiking]*2, linestyle='--', color='grey')
+        
+        axs[pos1,pos2].set_xticklabels([0]+delta_labels)
+        axs[pos1,pos2].set_xlabel('delta (ms)')
+        axs[pos1,pos2].set_ylabel('spike probability')
+        axs[pos1,pos2].spines['right'].set_visible(False)
+        axs[pos1,pos2].spines['top'].set_visible(False)
+        axs[pos1,pos2].set_ylim(0,1)
+        axs[pos1,pos2].legend()
+        
+    plt.tight_layout()

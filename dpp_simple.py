@@ -41,19 +41,19 @@ specs = {'dspn': {
         
 # chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
-cell_type = 'dspn'
+cell_type = 'ispn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
  
-#model_iterator = list(range(specs[cell_type]['N']))
+model_iterator = list(range(specs[cell_type]['N']))
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
-model_iterator = [0,1]
+#model_iterator = [0,1]
 
 iterations = model_iterator.copy()
 
 trim_data = True
 
-n_rounds = 2
+n_rounds = 5
 avg_over_rounds = True
 model_round = []
 for r in range(n_rounds):
