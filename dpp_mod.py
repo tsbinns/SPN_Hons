@@ -105,7 +105,7 @@ else: # use the bulleting board form
     for cell_n in range(len(model_iterator)): # scatter processes
         cell_index = model_iterator[cell_n]
         # simulate model
-        run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]+3} #CHANGED!!!!!!!!!!!
+        run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
         pc.submit(sf.dpp_ACh_modded, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         
     while pc.working(): # gather results
@@ -132,7 +132,6 @@ ACh_info = info['ACh']
 
 # collates data loaded from files
 data_all = {}
-n_rounds=5
 for i, iteration in enumerate(iterations):
     round_data = {}
     for r in range(n_rounds):
