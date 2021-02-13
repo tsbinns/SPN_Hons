@@ -1341,7 +1341,7 @@ def draw_factors_ACh(cell_type, \
                      modulate = ['all'], \
                      mode = 'random'):
     '''
-    Gets modulation values for the appropriate channels tailored to the 
+    Gets cholinergic modulation values for the appropriate channels tailored to the 
         requested cell type, based on the values in Lindroos and Kotaleski 
         (2020).
     
@@ -1418,6 +1418,93 @@ def draw_factors_ACh(cell_type, \
     
     return mod_vals
 
+
+
+def draw_factors_DA(cell_type, \
+                     modulate = ['all'], \
+                     mode = 'random'):
+    '''
+    Gets dopaminergic modulation values for the appropriate channels tailored to the 
+        requested cell type, based on the values in Lindroos and Kotaleski 
+        (2020).
+    
+    INPUT(S):
+        - cell_type: type of cell that is being modulated (must be 'dspn' or
+            'ispn') [str]
+        - modulate: which mechanisms should be modulated. If all applicable
+            mechanisms should be modulated, use ['all'] (default), else use a 
+            list with the mechanisms [list of str or strs]
+        - mode: 'random' (default; modulation value drawn randomly from the 
+            range of values) or 'mean' (modulation value taken as the mean of
+            the range of values) [str]
+        
+    OUTPUT(S):
+        - mod_info: mechanism modulation values [dict]
+    
+    Thomas Binns (author), 13/02/21
+    '''
+    
+    # ===== checks inputs are appropriate =====
+    
+    if cell_type != 'dspn' and cell_type != 'ispn':
+        raise ValueError("The requested cell type '{}' is not supported.\nOnly 'dpsn' and 'ispn' are recognised.".format(cell_type))
+        
+    if mode != 'random' and mode != 'mean':
+        raise ValueError("The requested mode '{}' is not supported.\nOnly 'random' and 'mean' are recognised.".format(mode))
+    
+    if not isinstance(modulate,list):
+        raise ValueError("The requested mechanism(s) to modulate should be given in a list format\n(e.g. ['all'], ['naf','kaf'], etc...), but have not been.")
+
+    
+    # ===== gets modulation factors =====
+    
+    # gets cell type-specific factors
+    if cell_type == 'dspn':
+        
+        ranges = {'naf':  [0.6 , 0.8],
+                  'kaf':  [0.75, 0.85],
+                  'kas':  [0.65, 0.85],
+                  'kir':  [0.85, 1.25],
+                  'cal12':[1.0 , 2.0],
+                  'cal13':[1.0 , 2.0],
+                  'can':  [0.2 , 1.0],
+                  'NMDA': [1.3 , 1.3],
+                  'AMPA': [1.2 , 1.2],
+                  'GABA': [0.8 , 0.8]}
+        
+    else:
+        ranges = {'naf':  [0.95, 1.1],
+                  'kaf':  [1.0 , 1.1],
+                  'kas':  [1.0 , 1.1],
+                  'kir':  [0.8 , 1.0],
+                  'cal12':[0.7 , 0.8],
+                  'cal13':[0.7 , 0.8],
+                  'can':  [0.9 , 1.0],
+                  'car':  [0.6 , 0.8],
+                  'NMDA': [0.85, 1.05],
+                  'AMPA': [0.7 , 0.9],
+                  'GABA': [0.9 , 1.1]}
+    
+    
+    if modulate[0] == 'all':
+        modulate = []
+        for key in ranges:
+            modulate.append(key)
+    
+    
+    # gets modulation values
+    mod_vals = {}
+    
+    if mode == 'random':
+        for channel in modulate:
+            mod_vals[channel] = np.random.uniform(ranges[channel][0],ranges[channel][1])
+    
+    else:
+        for channel in modulate:
+            mod_vals[channel] = sum(ranges[channel])/len(ranges[channel])
+    
+    
+    return mod_vals
 
 
 
@@ -2390,95 +2477,7 @@ def grouped_boxplot(data, ax, labels=None, colors=None):
 
 
 
-# ===== OTHER =================
-
-
-
-def select_iterations(model_sets, n_iters=10):
-    '''
-    Randomly selects which model iterations to used based on their rheobase values.
-    
-    INPUT(S):
-        - model_sets: dictionary containing the details of the various available models [dict]
-        - n_iters: number of model iterations to choose [int]
-        
-    OUTPUT(S):
-        - chosen_iters: dictionary containing the ids of the chosen model, their rheobase values, as well as info
-            on these values [dict]
-    
-    Thomas Binns (author), 02/02/21    
-    '''
-    
-    # collects rheobase values
-    rheos = []
-    for i in range(len(model_sets)):
-        rheos.append(int(model_sets[i]['rheobase']))
-        
-    # gets indexes of rheobase values as if they were sorted in ascending order
-    sorted_idxs = np.argsort(rheos)
-    sorted_idxs = sorted_idxs.tolist()
-    
-    # gets rheos to take 
-    sample_idxs = random.sample(sorted_idxs, n_iters)
-    chosen_rheos = []
-    for i in sample_idxs:
-        chosen_rheos.append(rheos[i])
-        
-    # gets data on chosen iterations
-    chosen_iters = {'ids':sample_idxs, 'rheos':chosen_rheos, 'mean':sum(chosen_rheos)/len(chosen_rheos),
-                    'min':min(chosen_rheos), 'max':max(chosen_rheos)}
-    
-    return chosen_iters
-    
-
-
-
-def iter_params(cell_type, only_ids=False):
-    '''
-    Returns the model iterations that have been chosen for simulation based on randomly chosing the models based
-    on their rheobase values.
-    
-    INPUT(S):
-        - cell_type: cell type to simulate. Should be 'dspn' or 'ispn' [str]
-        - only_ids: if True, only the ids of the iterations to simulate are returned
-        
-    OUTPUT(S):
-        - chosen_iters: dictionary containing the ids of the chosen model, their rheobase values, as well as info
-            on these values [dict]
-    
-    Thomas Binns (author), 02/02/21
-    '''
-    
-    if cell_type == 'dspn':
-        '''
-        chosen_iters = {'ids': [19, 47, 65, 38, 61, 39, 7, 29, 68, 57],
-                        'rheos': [387, 297, 399, 322, 362, 341, 318, 320, 380, 390],
-                        'mean': 351.6, 'min': 297, 'max': 399}
-        '''
-        chosen_iters = {'ids':[56, 23, 1, 44, 33, 57, 31, 28, 9, 66, 0, 16, 14, 47, 39, 68, 11, 36, 25, 62],
-                        'rheos':[278, 359, 360, 361, 323, 390, 355, 297, 382, 394, 383, 338, 401, 297, 341, 380, 359, 302, 343, 376],
-                        'mean':350.95, 'min':278, 'max':401}
-        
-    elif cell_type == 'ispn':
-        '''
-        chosen_iters = {'ids': [16, 2, 9, 5, 23, 3, 17, 26, 30, 31],
-                        'rheos': [320, 199, 281, 355, 356, 253, 362, 330, 238, 296],
-                        'mean': 299.0, 'min': 199, 'max': 362}
-        '''
-        chosen_iters = {'ids':[11, 24, 22, 12, 0, 10, 29, 6, 18, 16, 23, 19, 31, 25, 4, 27, 28, 21, 9, 7],
-                        'rheos':[292, 357, 296, 302, 318, 298, 338, 280, 356, 320, 356, 240, 296, 298, 338, 223, 295, 339, 281, 336],
-                        'mean':307.95, 'min':223, 'max':357}
-        
-    else:
-        raise ValueError("The cell type {} is not recognised.\nThis should be 'dspn' or 'ispn'.".format(cell_type))
-        
-    if only_ids == True:
-        chosen_iters = chosen_iters['ids']
-    
-    return chosen_iters
-    
-    
-    
+# ===== OTHER =================  
 
 
 
@@ -2543,7 +2542,8 @@ def params_for_input(cell_type, input_type):
     '''
     
     # ===== checks for correct input and cell types =====
-    if input_type != 'clustered' and input_type != 'HFI' and input_type != 'ACh' and input_type != 'noise':
+    acceptable = ['clustered', 'HFI', 'ACh', 'noise', 'DA']
+    if input_type not in acceptable:
         raise ValueError("The input type {} is not recognised.\nThis should be 'clustered', 'HFI', 'noise', or 'ACh'.".format(input_type))
         
     if cell_type != 'dspn' and cell_type != 'ispn':
@@ -2567,6 +2567,10 @@ def params_for_input(cell_type, input_type):
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[48]','soma[0]','axon[0]']
             
+        if input_type == 'DA': # DAergic input info
+            info['DA'] = {}
+            info['DA']['target'] = ['dend[48]','soma[0]','axon[0]']
+            
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
             #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[49]','dend[ge50]','dend[51]','dend[52]','dend[53]']}
@@ -2578,6 +2582,10 @@ def params_for_input(cell_type, input_type):
             info['ACh'] = {}
             info['ACh']['target'] = ['dend[8]','soma[0]','axon[0]']
         
+        if input_type == 'DA': # DAergic input info
+            info['DA'] = {}
+            info['DA']['target'] = ['dend[8]','soma[0]','axon[0]']
+        
         if input_type == 'HFI': # high-frequency input
             info['HFI'] = {'exclude':['soma[0]','axon[0]']}
             #info['HFI'] = {'exclude':['soma[0]','axon[0]','dend[9]','dend[10]','dend[11]','dend[12]','dend[13]','dend[14]','dend[15]', 'dend[16]','dend[17]','dend[18]','dend[19]']}
@@ -2588,7 +2596,12 @@ def params_for_input(cell_type, input_type):
         info['ACh']['params'] = {'stim_t':info['clustered']['params']['stim_t'],
                                  'stop_t':info['clustered']['params']['stop_t']}
         info['ACh']['label'] = ['off-site','soma','axon']
-        
+    
+    if input_type == 'DA':
+        info['DA']['params'] = {'stim_t':info['clustered']['params']['stim_t'],
+                                 'stop_t':info['clustered']['params']['stop_t']}
+        info['DA']['label'] = ['off-site','soma','axon']
+    
     elif input_type == 'HFI':
         info['HFI']['params'] = {'freq':25, 'n_inputs':20}
         

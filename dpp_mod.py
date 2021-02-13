@@ -39,17 +39,23 @@ specs = {'dspn': {
                     'morph': 'Morphologies/WT-iMSN_P270-09_1.01_SGA2-m1.swc'}
         }
         
-# chose cell type ('ispn' or 'dspn') and model id(s) to simulate...
+# choose cell type ('ispn' or 'dspn') and model id(s) to simulate...
 
 cell_type = 'dspn'
 if cell_type != 'dspn' and cell_type != 'ispn':
     raise ValueError("The requested cell type is not supported.\nOnly 'dpsn' and 'ispn' are recognised.")
-    
+
 #model_iterator = cf.iter_params(cell_type, only_ids=True)
 model_iterator = list(range(specs[cell_type]['N']))
 #model_iterator = [0,1]
 
 iterations = model_iterator.copy()
+
+# choose type of modulation
+mod_type = 'DA'
+if mod_type != 'ACh' and mod_type != 'DA':
+    raise ValueError("The requested modulation type is not supported.\nOnly 'ACh' and 'DA' are recognised.")
+
 
 trim_data = True
 
@@ -95,7 +101,10 @@ if pc.nhost() == 1: # use the serial form
         cell_index = model_iterator[cell_n]
         # simulate model
         run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
-        data = sf.dpp_ACh_modded(model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
+        if mod_type == 'ACh':
+            data = sf.dpp_ACh_modded(model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
+        else:
+            data = sf.dpp_DA_modded(model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         # save file to folder
         name = '{}_{}-{}_modulation'.format(cell_type,data['meta']['round'], data['meta']['id'])
         cf.save_data(data,'{}/{}.json'.format(folder, name))
@@ -106,7 +115,10 @@ else: # use the bulleting board form
         cell_index = model_iterator[cell_n]
         # simulate model
         run_info = {'curr_n':cell_n, 'tot_n':len(model_iterator), 'round':model_round[cell_n]}
-        pc.submit(sf.dpp_ACh_modded, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
+        if mod_type == 'ACh':
+            pc.submit(sf.dpp_ACh_modded, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
+        else:
+            pc.submit(sf.dpp_DA_modded, model_data, cell_index, run_info, noise, HFI, HFI_delay, dur_and_amp, spike)
         
     while pc.working(): # gather results
         data = pc.pyret()
@@ -127,8 +139,8 @@ print('Simulations completed (took %.0f secs).\nNow performing calculations/coll
 
 info = cf.params_for_input(cell_type, 'clustered')
 clus_info = info['clustered']
-info = cf.params_for_input(cell_type, 'ACh')
-ACh_info = info['ACh']
+info = cf.params_for_input(cell_type, mod_type)
+mod_info = info[mod_type]
 
 # collates data loaded from files
 data_all = {}
@@ -170,7 +182,7 @@ for i in range(len(iterations)):
                 data[i]['all'][lab][lab]['dur'] = np.mean(data[i]['all'][lab][lab]['dur']).tolist()
                 data[i]['all'][lab][lab]['amp'] = np.mean(data[i]['all'][lab][lab]['amp']).tolist()
                 
-        for mod in ACh_info['label']:
+        for mod in mod_info['label']:
             
             data[i]['all'][lab][mod] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[], 'spiked_avg':[]}
         
@@ -210,7 +222,7 @@ for lab in clus_info['label']:
             data['all'][lab][lab]['spiked'].append(data[i]['all'][lab][lab]['spiked'])
             data['all'][lab][lab]['spiked_avg'].append(data[i]['all'][lab][lab]['spiked_avg'])
             
-    for mod in ACh_info['label']:
+    for mod in mod_info['label']:
         
         data['all'][lab][mod] = {'vm':[], 'dur':[], 'amp':[], 'spiked':[], 'spiked_avg':[]}    
     
@@ -227,7 +239,12 @@ for lab in clus_info['label']:
 
 # collates meta data
 data['meta'] = {'tm':data[i]['all']['meta']['tm'], 'cell type':cell_type, 'iterations':iterations,
-                       'n rounds':n_rounds, 'clustered':clus_info, 'ACh info':ACh_info, 'avg':avg_over_rounds}
+                       'n rounds':n_rounds, 'clustered':clus_info, 'avg':avg_over_rounds}
+if mod_type == 'ACh':
+    data['meta']['ACh info'] = mod_info
+else:
+    data['meta']['DA info'] = mod_info
+    
 if noise:
     info = cf.params_for_input(cell_type, 'noise')
     data['meta']['noise'] = info['noise']
@@ -248,7 +265,7 @@ if not HFI:
         data['avg'][lab][lab]['vm'] = np.ndarray.tolist(np.mean(data['avg'][lab][lab]['vm'],axis=0))
         data['avg'][lab][lab]['dur'] = float(np.mean(data['all'][lab][lab]['dur']))
         data['avg'][lab][lab]['amp'] = float(np.mean(data['all'][lab][lab]['amp']))
-        for mod in ACh_info['label']:
+        for mod in mod_info['label']:
             data['avg'][lab][mod] = {}
             data['avg'][lab][mod]['vm'] = np.ndarray.tolist(np.mean(data['all'][lab][mod]['vm'],axis=0))
             data['avg'][lab][mod]['vm'] = np.ndarray.tolist(np.mean(data['avg'][lab][mod]['vm'],axis=0))
@@ -261,7 +278,7 @@ if not HFI:
         
 # ===== save collated data =====
 folder = 'Data/'
-name = '{}_HFI[{}]+{}_modulation.json'.format(cell_type,HFI,HFI_delay)
+name = '{}_HFI[{}]+{}_{}-modulation.json'.format(cell_type, HFI, HFI_delay, mod_type)
 
 if trim_data:
     keys = ['all','meta']

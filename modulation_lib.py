@@ -402,3 +402,155 @@ class set_ACh():
                     self._mod_mech(sec(self.target_x), reset=True)
                     self._mod_chan(sec(self.target_x), reset=True)
     
+
+
+
+
+class set_DA():
+    ''' 
+    Class for setting dopaminergic modulation of the cell.
+    '''
+    
+    def __init__(self,  cell,
+                        mod_dict,                                    
+                        target = ['all'],
+                        target_x = 'all',
+                        play=[],
+                        dt=0.025):
+        '''
+        Class initialisation and modulation of cell.
+        
+        INPUT(S):
+            - cell: cell to modulate [MSN object]
+            - mod_dict: mechanism:modulation value pairs [dict]
+            - target: section(s) of cell to modulate (default all sections) 
+                [list of section names]
+            - target_x: segment of section(s) to modulate (default: all 
+                segments). Can specify a specific segment as a number (e.g. 0.5
+                to modulate the middle segment) [str or number]
+            - play: key:value pairs containing time-specific scaling of each 
+                mechanism's modulation (default: 1*scaling of modulation 
+                throughout the simulation). Specify time-dependent modulation 
+                as a hoc vector in which the value of vector[t/dt] == scaling 
+                of modulation at time t in the simulation (see h.Vector.play 
+                documentation for more information) [dict of h.Vector(s)]
+            - shift_kaf: voltage by which the mechanism 'kaf' is shifted * -1
+                (i.e. default: shift_kaf = 10 -> kaf shifted -10 mV). If 'play'
+                is given and contains a 'kaf' key, 'shift_kaf' is ignored in
+                favour of that specified by 'play' [number]
+            ==== N.B. the 'kaf' scaling in 'play' (if given) should follow 
+                    this same logic (i.e. for a voltage shift from 0 mV at time 
+                    t to -10 mV at time t+1, play['kaf'][t/dt] == 0 and 
+                    play['kaf'][t+1/dt] == 10)
+            - dt: size of the time step in the simulation used for determining
+                when to apply modulation scaling associated with 'play'
+                (default: 0.025; units of ms) [number]
+        
+        OUTPUT(S):
+            None
+        
+        Thomas Binns (modified), 30/01/21
+        '''
+        
+        # checks for appropriate inputs
+        if isinstance(target_x,str):
+            if target_x != 'all':
+                raise ValueError("The requested segment target '{}' is not recognised.\nThis should be 'all' or a number, e.g. 0.5.".format(target_x))
+        
+        # assigns values to class
+        self.cell = cell
+        self.mod_dict = mod_dict
+        self.target = target
+        self.target_x = target_x
+        self.play = play
+        self.dt = dt
+        
+        # gets targets for modulation
+        if 'all' in self.target:
+            self.target = self.cell.allseclist
+        
+        # performs modulation of cell
+        self._set_modulation()
+        
+        
+    def _set_modulation(self):
+        '''
+        Modulates the requested segments of the requested sections.
+        '''
+        for tar in self.target:
+            for sec in self.cell.allseclist:
+                if sec.name() == tar:
+                    if self.target_x == 'all':
+                        for seg in sec:
+                            self._mod_mech(seg)
+                            self._mod_chan(seg)
+                    else:
+                        self._mod_mech(sec(self.target_x))
+                        self._mod_chan(sec(self.target_x))
+                
+                
+    def _mod_mech(self, seg, reset=False): # shift conductance
+        '''
+        Modulates mechanisms (but not GABA, NMDA, or AMPA).
+        '''
+        for mech in seg:
+            if mech.name() in self.mod_dict:
+                mech.damod = 1
+                mech.max2 = self.mod_dict[mech.name()]
+                if reset:
+                    mech.lev2 = 0
+                if len(self.play) and mech.name() in self.play:
+                    self.play[mech.name()].play(mech._ref_lev2, self.dt)
+                else:
+                    mech.lev2 = 1
+    
+    
+    def _mod_chan(self, seg, reset=False):
+        '''
+        Modulates GABA, NMDA, and AMPA mechanisms.
+        '''
+        for syn in seg.point_processes(): # modulate channels if applicable
+            
+            if 'gaba' in syn.hname() and 'GABA' in self.mod_dict:
+                syn.damod = 1
+                syn.max2 = self.mod_dict['GABA']
+                if reset:
+                    syn.lev2 = 0
+                elif len(self.play) and 'GABA' in self.play:
+                    self.play['GABA'].play(syn._ref_lev2, self.dt)
+                else:
+                    syn.lev2 = 1
+            
+            elif 'glut' in syn.hname()and 'GLUT' in self.mod_dict:
+                syn.damod = 1
+                syn.max2NMDA = self.mod_dict['NMDA']
+                syn.max2AMPA = self.mod_dict['AMPA']
+                if reset:
+                    syn.l2AMPA = 0
+                    syn.l2NMDA = 0
+                elif len(self.play) and 'NMDA' in self.play() and 'AMPA' in self.play:
+                    self.play['NMDA'].play(syn._ref_l2NMDA, self.dt)
+                    self.play['AMPA'].play(syn._ref_l2AMPA, self.dt)
+                else:
+                    syn.l2AMPA = 1
+                    syn.l2NMDA = 1
+                            
+    
+    def _reset_mod(self):
+        '''
+        Reverses modulation to return cell status to normal.
+        '''
+        if len(self.play):
+            for trans in self.play.values():
+                trans.play_remove()
+                
+        for tar in self.target:
+            for sec in self.cell.allseclist:
+                if sec.name() == tar:
+                    self._mod_mech(sec(self.target_x), reset=True)
+                    self._mod_chan(sec(self.target_x), reset=True)
+                    
+                    
+                    
+                    
+                    

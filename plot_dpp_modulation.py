@@ -12,7 +12,7 @@ import scipy.stats          as stats
 
 
 
-HFI = 1
+HFI = 0
 
 if HFI == 0:
     
