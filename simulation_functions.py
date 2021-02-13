@@ -508,7 +508,7 @@ def dpp_DA_modded(model_data,
         DA_targets = {}
         DA_targets['target'] = [clus_tar]
         DA_targets['label'] = [clus_lab]
-        for j, DA_t in enumerate(DA_info['ACh']['target']):
+        for j, DA_t in enumerate(DA_info['DA']['target']):
             DA_targets['target'].append(DA_t)
             DA_targets['label'].append(DA_info['DA']['label'][j])
         

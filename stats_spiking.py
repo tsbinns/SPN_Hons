@@ -9,6 +9,8 @@ import numpy                            as np
 
 modulation = 1
 
+cell_type = 'dspm'
+mod_type = 'ACh'
 
 
 if not modulation:
@@ -18,12 +20,11 @@ if not modulation:
     # load data
     spike_data = {}
     for i, r in enumerate(delta):
-        data = cf.load_data('Data/ispn_HFI[1]+{}_validation.json'.format(delta[i]))
+        data = cf.load_data('Data/{}_HFI[1]+{}_validation.json'.format(cell_type, delta[i]))
         spike_data[r] = data['all']
         
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
-    cell_type = data['meta']['cell type']
     
     # collects iteration-wise spike data into single vector (control data)
     spiked = {}
@@ -55,7 +56,6 @@ if not modulation:
 
 else:
     
-    cell_type = 'dspn'
     
     delta = list(np.arange(0,100+1,20))
     
@@ -66,15 +66,14 @@ else:
         data = cf.load_data('Data/{}_HFI[1]+{}_validation.json'.format(cell_type, delt))
         spike_data_ctrl[delt] = data['all']
         
-        data = cf.load_data('Data/{}_HFI[1]+{}_modulation.json'.format(cell_type, delt))
+        data = cf.load_data('Data/{}_HFI[1]+{}_{}-modulation.json'.format(cell_type, delt, mod_type))
         spike_data[delt] = data['all']
     
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
-    cell_type = data['meta']['cell type']
     
-    ACh_info = data['meta']['ACh info']
-    ACh_labels = ACh_info['label']
+    mod_info = data['meta'][mod_type + ' info']
+    mod_labels = mod_info['label']
     
     # collects iteration-wise spike data into single vector (modulation data)
     spiked = {}
@@ -86,11 +85,11 @@ else:
             for i in range(len(spike_data[delt][clus][clus]['spiked'])):
                 for j in range(len(spike_data[delt][clus][clus]['spiked'][i])):
                     spiked[delt][clus][clus].append(spike_data[delt][clus][clus]['spiked'][i][j])
-            for ACh in ACh_labels:
-                spiked[delt][clus][ACh] = []
-                for i in range(len(spike_data[delt][clus][ACh]['spiked'])):
-                    for j in range(len(spike_data[delt][clus][ACh]['spiked'][i])):
-                        spiked[delt][clus][ACh].append(spike_data[delt][clus][ACh]['spiked'][i][j])
+            for mod in mod_labels:
+                spiked[delt][clus][mod] = []
+                for i in range(len(spike_data[delt][clus][mod]['spiked'])):
+                    for j in range(len(spike_data[delt][clus][mod]['spiked'][i])):
+                        spiked[delt][clus][mod].append(spike_data[delt][clus][mod]['spiked'][i][j])
     
     # collects iteration-wise spike data into single vector (control data)
     spiked_ctrl = {}
@@ -119,14 +118,14 @@ else:
         tab = cf.binary_to_table(spiked[delt][clus_labels[0]][clus_labels[0]], spiked[delt][clus_labels[1]][clus_labels[1]])
         spike_data['stats']['diff']['on-site'][delt] = cf.McNemar(tab)
         
-        for j, ACh_lab in enumerate(ACh_labels):
+        for j, mod_lab in enumerate(mod_labels):
             if d == 0:
-                spike_data['stats']['diff'][ACh_lab] = {}
+                spike_data['stats']['diff'][mod_lab] = {}
             
             # whether spike occured
             #tab = cf.binary_to_table(spike_data[delt][clus_labels[0]][ACh_lab]['spiked'], spike_data[delt][clus_labels[1]][ACh_lab]['spiked'])
-            tab = cf.binary_to_table(spiked[delt][clus_labels[0]][ACh_lab], spiked[delt][clus_labels[1]][ACh_lab])
-            spike_data['stats']['diff'][ACh_lab][delt] = cf.McNemar(tab)
+            tab = cf.binary_to_table(spiked[delt][clus_labels[0]][mod_lab], spiked[delt][clus_labels[1]][mod_lab])
+            spike_data['stats']['diff'][mod_lab][delt] = cf.McNemar(tab)
                 
                 
         
@@ -145,14 +144,14 @@ else:
             tab = cf.binary_to_table(spiked_ctrl[delt][clus_lab], spiked[delt][clus_lab][clus_lab])
             spike_data['stats']['diff_ctrl'][clus_lab][clus_lab][delt] = cf.McNemar(tab)
         
-            for j, ACh_lab in enumerate(ACh_labels):
+            for j, mod_lab in enumerate(mod_labels):
                 if d == 0:
-                    spike_data['stats']['diff_ctrl'][clus_lab][ACh_lab] = {}
+                    spike_data['stats']['diff_ctrl'][clus_lab][mod_lab] = {}
                 
                 # whether spike occured
                 #tab = cf.binary_to_table(spike_data_ctrl[delt][clus_lab]['spiked'], spike_data[delt][clus_lab][ACh_lab]['spiked'])
-                tab = cf.binary_to_table(spiked_ctrl[delt][clus_lab], spiked[delt][clus_lab][ACh_lab])
-                spike_data['stats']['diff_ctrl'][clus_lab][ACh_lab][delt] = cf.McNemar(tab)
+                tab = cf.binary_to_table(spiked_ctrl[delt][clus_lab], spiked[delt][clus_lab][mod_lab])
+                spike_data['stats']['diff_ctrl'][clus_lab][mod_lab][delt] = cf.McNemar(tab)
         
     
     

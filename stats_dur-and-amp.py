@@ -10,15 +10,15 @@ import matplotlib.pyplot                as plt
 
 modulation = 1
 
-
+cell_type = 'dspn'
+mod_type = 'ACh'
 
 if not modulation:
     
     # load data
-    data = cf.load_data('Data/ispn_HFI[0]+0_validation.json')
+    data = cf.load_data('Data/{}_HFI[0]+0_validation.json'.format(cell_type))
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
-    cell_type = data['meta']['cell type']
     
     # normality checking =====
     
@@ -71,16 +71,15 @@ if not modulation:
     
 else:
     
-    cell_type = 'dspn'
     
     # load data
-    data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))
+    data = cf.load_data('Data/{}_HFI[0]+0_{}-modulation.json'.format(cell_type, mod_type))
     ctrl_data = cf.load_data('Data/{}_HFI[0]+0_validation.json'.format(cell_type))
     clus_info = data['meta']['clustered']
     clus_labels = clus_info['label']
     
-    ACh_info = data['meta']['ACh info']
-    ACh_labels = ACh_info['label']
+    mod_info = data['meta'][mod_type + ' info']
+    mod_labels = mod_info['label']
     
     cell_type = data['meta']['cell type']
     
@@ -97,19 +96,19 @@ else:
         # amplitude data
         data['stats'][clus_lab][clus_lab]['amp'] = cf.norm_dist(data['all'][clus_lab][clus_lab]['amp'])
         
-        for ACh_lab in ACh_labels:
+        for mod_lab in mod_labels:
             
-            data['stats'][clus_lab][ACh_lab] = {'dur':{}, 'amp':{}}
+            data['stats'][clus_lab][mod_lab] = {'dur':{}, 'amp':{}}
             # duration data
-            data['stats'][clus_lab][ACh_lab]['dur'] = cf.norm_dist(data['all'][clus_lab][ACh_lab]['dur'])
+            data['stats'][clus_lab][mod_lab]['dur'] = cf.norm_dist(data['all'][clus_lab][mod_lab]['dur'])
             # amplitude data
-            data['stats'][clus_lab][ACh_lab]['amp'] = cf.norm_dist(data['all'][clus_lab][ACh_lab]['amp'])
+            data['stats'][clus_lab][mod_lab]['amp'] = cf.norm_dist(data['all'][clus_lab][mod_lab]['amp'])
     
     
     # plot histograms
     for i, clus_lab in enumerate(clus_labels):
         
-        fig, axs = plt.subplots(2,len(ACh_labels)+1)
+        fig, axs = plt.subplots(2,len(mod_labels)+1)
         fig.suptitle(cell_type + ', ' + clus_lab)
         
         # duration data
@@ -120,15 +119,15 @@ else:
         axs[1,0].hist(data['all'][clus_lab][clus_lab]['amp'])
         axs[1,0].set_title('amp, on-site, ' + str(data['stats'][clus_lab][clus_lab]['amp']))
         
-        for j, ACh_lab in enumerate(ACh_labels):
+        for j, mod_lab in enumerate(mod_labels):
         
             # duration data
-            axs[0,j+1].hist(data['all'][clus_lab][ACh_lab]['dur'])
-            axs[0,j+1].set_title('dur, ' + ACh_lab + ', ' + str(data['stats'][clus_lab][ACh_lab]['dur']))
+            axs[0,j+1].hist(data['all'][clus_lab][mod_lab]['dur'])
+            axs[0,j+1].set_title('dur, ' + mod_lab + ', ' + str(data['stats'][clus_lab][mod_lab]['dur']))
             
             # amplitude data
-            axs[1,j+1].hist(data['all'][clus_lab][ACh_lab]['amp'])
-            axs[1,j+1].set_title('amp, ' + ACh_lab + ', ' + str(data['stats'][clus_lab][ACh_lab]['amp']))
+            axs[1,j+1].hist(data['all'][clus_lab][mod_lab]['amp'])
+            axs[1,j+1].set_title('amp, ' + mod_lab + ', ' + str(data['stats'][clus_lab][mod_lab]['amp']))
         
         plt.tight_layout()  
         
@@ -155,28 +154,28 @@ else:
             data['all'][clus_lab][clus_lab]['amp']])[-1]
         data['stats']['diff'][clus_lab][clus_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
         
-        for j, ACh_lab in enumerate(ACh_labels):
+        for j, mod_lab in enumerate(mod_labels):
             
-            data['stats']['diff'][clus_lab][ACh_lab] = {'dur':{}, 'amp':{}}
+            data['stats']['diff'][clus_lab][mod_lab] = {'dur':{}, 'amp':{}}
             # duration data
-            data['stats']['diff'][clus_lab][ACh_lab]['dur']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['dur'],
-                data['all'][clus_lab][ACh_lab]['dur']])[-1]
-            data['stats']['diff'][clus_lab][ACh_lab]['dur']['label'] = 'Anderson-Darling; control:modulated duration'
+            data['stats']['diff'][clus_lab][mod_lab]['dur']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['dur'],
+                data['all'][clus_lab][mod_lab]['dur']])[-1]
+            data['stats']['diff'][clus_lab][mod_lab]['dur']['label'] = 'Anderson-Darling; control:modulated duration'
             # amplitude data
-            data['stats']['diff'][clus_lab][ACh_lab]['amp']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['amp'],
-                data['all'][clus_lab][ACh_lab]['amp']])[-1]
-            data['stats']['diff'][clus_lab][ACh_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
+            data['stats']['diff'][clus_lab][mod_lab]['amp']['result'] = stats.anderson_ksamp([ctrl_data['all'][clus_lab]['amp'],
+                data['all'][clus_lab][mod_lab]['amp']])[-1]
+            data['stats']['diff'][clus_lab][mod_lab]['amp']['label'] = 'Anderson-Darling; control:modulated amplitude'
     
 
     # tests whether duration and amplitude values for each modulation target are signficantly different to each other for
         # proximal and distal clustered stimulation
         
-    ACh_targets = ['on-site']
-    ACh_targets.extend(ACh_labels)
+    mod_targets = ['on-site']
+    mod_targets.extend(mod_labels)
     
     variables = ['dur', 'amp']
     
-    for i, tar in enumerate(ACh_targets):
+    for i, tar in enumerate(mod_targets):
         
         data['stats']['diff'][tar] = {'dur':{}, 'amp':{}}
         

@@ -13,13 +13,14 @@ import scipy.stats          as stats
 
 
 HFI = 0
+cell_type = 'dspn'
+mod_type = 'ACh'
 
 if HFI == 0:
     
-    cell_type = 'dspn'
     
     # load data
-    data = cf.load_data('Data/{}_HFI[0]+0_modulation.json'.format(cell_type))#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
+    data = cf.load_data('Data/{}_HFI[0]+0_{}-modulation.json'.format(cell_type, mod_type))#cf.load_data('C:/Users/tomth/OneDrive/Documents/Work/Courses/Level 4/Honours/Data/dspn_n16.json')
     ctrl_data = cf.load_data('Data/{}_HFI[0]+0_validation.json'.format(cell_type))
     
     
@@ -34,11 +35,11 @@ if HFI == 0:
     clus_targets = data['meta']['clustered']['target']
     clus_labels = data['meta']['clustered']['label']
     
-    # cholinergic stimulation data
-    ACh_stim_t = data['meta']['ACh info']['params']['stim_t']
-    ACh_stop_t = data['meta']['ACh info']['params']['stop_t']
-    ACh_targets = data['meta']['ACh info']['target']
-    ACh_labels = data['meta']['ACh info']['label']
+    # modulation data
+    mod_stim_t = data['meta'][mod_type + ' info']['params']['stim_t']
+    mod_stop_t = data['meta'][mod_type + ' info']['params']['stop_t']
+    mod_targets = data['meta'][mod_type + ' info']['target']
+    mod_labels = data['meta'][mod_type + ' info']['label']
     
     # simulation data
     cell_type = data['meta']['cell type']
@@ -91,15 +92,15 @@ if HFI == 0:
         axs[i].fill_between(data['meta']['tm'], sem_plus, sem_minus, alpha=.1, color=cols[col_i])
         col_i += 1
         
-        for j, ACh_lab in enumerate(ACh_labels):
+        for j, mod_lab in enumerate(mod_labels):
             
             # plots voltage values for modulation applied to non-clustered input sites
-            lab = ACh_lab
-            axs[i].plot(data['meta']['tm'], data['avg'][clus_lab][ACh_lab]['vm'], label=lab, color=cols[col_i])
+            lab = mod_lab
+            axs[i].plot(data['meta']['tm'], data['avg'][clus_lab][mod_lab]['vm'], label=lab, color=cols[col_i])
             # plots sem shading
-            sem = stats.sem(data['avg'][clus_lab][ACh_lab]['vm'], axis=0)
-            sem_plus = data['avg'][clus_lab][ACh_lab]['vm'] + sem
-            sem_minus = data['avg'][clus_lab][ACh_lab]['vm'] - sem
+            sem = stats.sem(data['avg'][clus_lab][mod_lab]['vm'], axis=0)
+            sem_plus = data['avg'][clus_lab][mod_lab]['vm'] + sem
+            sem_minus = data['avg'][clus_lab][mod_lab]['vm'] - sem
             axs[i].fill_between(data['meta']['tm'], sem_plus, sem_minus, alpha=.1, color=cols[col_i])
             col_i += 1
         
@@ -120,7 +121,7 @@ if HFI == 0:
             linewidth=5,color='red',solid_capstyle='butt')
         
         # underscore time of cholinergic modulation
-        axs[i].plot([ACh_stim_t,ACh_stop_t],[axs[i].get_ylim()[0],axs[i].get_ylim()[0]], \
+        axs[i].plot([mod_stim_t,mod_stop_t],[axs[i].get_ylim()[0],axs[i].get_ylim()[0]], \
             linewidth=3,color='cyan',linestyle='--',solid_capstyle='butt')
     
     
@@ -144,12 +145,12 @@ if HFI == 0:
         
         # groups duration data for plotting
         dur_data['on-site'] = []
-        for i, ACh_lab in enumerate(ACh_labels):
-            dur_data[ACh_lab] = []
+        for i, mod_lab in enumerate(mod_labels):
+            dur_data[mod_lab] = []
         for i, clus_lab in enumerate(clus_labels): # clustered input site duration data
             dur_data['on-site'].append(data['all'][clus_lab][clus_lab]['dur'])
-            for i, ACh_lab in enumerate(ACh_labels): # off-site and soma duration data
-                dur_data[ACh_lab].append(data['all'][clus_lab][ACh_lab]['dur'])
+            for i, mod_lab in enumerate(mod_labels): # off-site and soma duration data
+                dur_data[mod_lab].append(data['all'][clus_lab][mod_lab]['dur'])
         
         # plots duration data
         bp_labels = {'groups':['proximal dend','distal dend'], 'axes':[]}
@@ -160,12 +161,12 @@ if HFI == 0:
         
         # groups amplitude data for plotting
         amp_data['on-site'] = []
-        for i, ACh_lab in enumerate(ACh_labels):
-            amp_data[ACh_lab] = []
+        for i, mod_lab in enumerate(mod_labels):
+            amp_data[mod_lab] = []
         for i, clus_lab in enumerate(clus_labels): # clustered input site duration data
             amp_data['on-site'].append(data['all'][clus_lab][clus_lab]['amp'])
-            for i, ACh_lab in enumerate(ACh_labels): # off-site and soma duration data
-                amp_data[ACh_lab].append(data['all'][clus_lab][ACh_lab]['amp'])
+            for i, mod_lab in enumerate(mod_labels): # off-site and soma duration data
+                amp_data[mod_lab].append(data['all'][clus_lab][mod_lab]['amp'])
         
         # plots amplitude data
         bp_labels = {'groups':['proximal dend','distal dend'], 'axes':[]}
@@ -178,8 +179,7 @@ if HFI == 0:
 
 
 else: # ===================
-    
-    cell_type = 'dspn'
+
     
     colors = (plt.rcParams['axes.prop_cycle']).by_key()['color']
     delta = list(np.arange(0,100+1,20))
@@ -193,17 +193,17 @@ else: # ===================
     for d in range(len(delta)):
         
         # load data
-        data = cf.load_data('Data/{}_HFI[1]+{}_modulation.json'.format(cell_type,delta[d]))
+        data = cf.load_data('Data/{}_HFI[1]+{}_{}-modulation.json'.format(cell_type, delta[d], mod_type))
         delta_labels.append('+{}'.format(delta[d]))
         
-        ctrl_data = cf.load_data('Data/{}_HFI[1]+{}_validation.json'.format(cell_type,delta[d]))
+        ctrl_data = cf.load_data('Data/{}_HFI[1]+{}_validation.json'.format(cell_type, delta[d]))
         
         
         # plotting =================
         
         clus_info = data['meta']['clustered']
         HFI_info = data['meta']['HFI']
-        ACh_info = data['meta']['ACh info']
+        mod_info = data['meta'][mod_type + ' info']
         
         # simulation data
         stim_n = clus_info['params']['stim_n']
@@ -217,10 +217,10 @@ else: # ===================
         model_iterator = data['meta']['iterations']
         n_rounds = data['meta']['n rounds']
         
-        ACh_labels = ACh_info['label']
+        mod_labels = mod_info['label']
         
-        ACh_targets = ['on-site']
-        ACh_targets.extend(ACh_labels)
+        mod_targets = ['on-site']
+        mod_targets.extend(mod_labels)
         
         labels = ['proximal dendrite', 'distal dendrite']
         
@@ -238,10 +238,10 @@ else: # ===================
         
         # plot voltage traces =====
         
-        for j, ACh_lab in enumerate(ACh_targets):
+        for j, mod_lab in enumerate(mod_targets):
 
             use_clus = 0
-            if ACh_lab == 'on-site':
+            if mod_lab == 'on-site':
                 use_clus = 1
             '''
             fig, axs = plt.subplots(2,1)
@@ -250,17 +250,17 @@ else: # ===================
             for i, clus_lab in enumerate(clus_labels):
 
                 if use_clus:
-                    ACh_lab = clus_lab
+                    mod_lab = clus_lab
                 
                 if d == 0 and j == 0:
                     spiking[clus_lab] = {clus_lab:{}}
                 if d == 0:
-                    spiking[clus_lab][ACh_lab] = {'spiked':{'avg':[], 'sem':[]}, 'first_spike':{'avg':[], 'sem':[]}, \
+                    spiking[clus_lab][mod_lab] = {'spiked':{'avg':[], 'sem':[]}, 'first_spike':{'avg':[], 'sem':[]}, \
                            'spike_n':{'avg':[], 'sem':[]}}
                 
                 # avg spiking data at each time point and sem
-                spiking[clus_lab][ACh_lab]['spiked']['avg'].append(np.mean(data['all'][clus_lab][ACh_lab]['spiked_avg']))
-                spiking[clus_lab][ACh_lab]['spiked']['sem'].append(stats.sem(data['all'][clus_lab][ACh_lab]['spiked_avg']))
+                spiking[clus_lab][mod_lab]['spiked']['avg'].append(np.mean(data['all'][clus_lab][mod_lab]['spiked_avg']))
+                spiking[clus_lab][mod_lab]['spiked']['sem'].append(stats.sem(data['all'][clus_lab][mod_lab]['spiked_avg']))
                 
                 '''
                 for k in range(len(model_iterator)*(n_rounds)):
@@ -346,24 +346,24 @@ else: # ===================
     fig, axs = plt.subplots(2,2)
     fig.suptitle(cell_type)
     
-    for j, ACh_lab in enumerate(ACh_targets):
+    for j, mod_lab in enumerate(mod_targets):
     
         use_clus = 0
-        if ACh_lab == 'on-site':
+        if mod_lab == 'on-site':
             use_clus = 1
         
         
         # plots spike probability
         pos1 = j//2
         pos2 = j%2
-        axs[pos1,pos2].set_title(ACh_lab)
+        axs[pos1,pos2].set_title(mod_lab)
         
         # modulation data
         for i, clus_lab in enumerate(clus_labels):
             if use_clus:
-                ACh_lab = clus_lab
-            axs[pos1,pos2].errorbar(delta, spiking[clus_lab][ACh_lab]['spiked']['avg'], \
-                         yerr=spiking[clus_lab][ACh_lab]['spiked']['sem'], color=colors[i], 
+                mod_lab = clus_lab
+            axs[pos1,pos2].errorbar(delta, spiking[clus_lab][mod_lab]['spiked']['avg'], \
+                         yerr=spiking[clus_lab][mod_lab]['spiked']['sem'], color=colors[i], 
                          label=labels[i], capsize=5)
         
         # control data
