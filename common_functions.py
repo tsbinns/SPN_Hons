@@ -12,7 +12,7 @@ import json, codecs
 import random
 import scipy.stats                      as stats
 from   statsmodels.stats.diagnostic import lilliefors
-
+from   pathlib                      import Path
 
 
 
@@ -709,6 +709,10 @@ def dpp_amp(tm, vm, base_vm, exclude=None):
     
 
 
+
+def create_folder(path):
+    
+    Path(path).mkdir(parents=True, exist_ok=True)
 
 
         
@@ -2555,7 +2559,7 @@ def params_for_input(cell_type, input_type):
     
     info['clustered'] = {}
     info['clustered']['label'] = ['proximal dend','distal dend']
-    info['clustered']['params'] = {'stim_n':16, 'stim_t':500, 'stop_t':575, 'isi':1, \
+    info['clustered']['params'] = {'stim_n':16, 'stim_t':100, 'stop_t':250, 'isi':1, \
                                    'pre_t':-50}
     
     

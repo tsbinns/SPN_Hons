@@ -252,7 +252,8 @@ def dpp_ACh_modded(model_data,
                    HFI = False,
                    HFI_delay = 0,
                    dur_and_amp = True,
-                   spike = False):
+                   spike = False,
+                   mod_tar = 'all'):
     '''
     Provides clustered glutamatergic input to SPNs to generate the dendritic 
     plateau potential in the absence of modulation.
@@ -337,6 +338,12 @@ def dpp_ACh_modded(model_data,
         for j, ACh_t in enumerate(ACh_info['ACh']['target']):
             ACh_targets['target'].append(ACh_t)
             ACh_targets['label'].append(ACh_info['ACh']['label'][j])
+        target_x = .5
+        
+        if mod_tar == 'all':
+            ACh_targets['target'] = ['all']
+            ACh_targets['label'] = ['all']
+            #target_x = 'all'
         
         for j, ACh_t in enumerate(ACh_targets['target']): # for each cholinergic input target
             
@@ -347,7 +354,6 @@ def dpp_ACh_modded(model_data,
                              morphology=model_data['specs']['morph'],
                              variables=model_data['model_sets'][cell_index]['variables'])
             rheobase = model_data['model_sets'][cell_index]['rheobase']
-            
             
             # record vectors
             tm = h.Vector()
@@ -377,7 +383,7 @@ def dpp_ACh_modded(model_data,
                 data['HFI'] = arrangement
             
             # get cholinergic modulation class
-            modulation = modulate.set_ACh(cell, mod_factors, [ACh_t], target_x=.5, play=mech_scale, dt=h.dt)
+            modulation = modulate.set_ACh(cell, mod_factors, [ACh_t], target_x=target_x, play=mech_scale, dt=h.dt)
             
             # run simulation
             h.finitialize(-80)
@@ -403,19 +409,11 @@ def dpp_ACh_modded(model_data,
                 
             # get spike-related data
             if spike:
-                spiked = 0
                 thresh = 0
                 # checks whether spike occured
                 data[clus_lab][ACh_lab]['spiked'] = 0
                 if max(vm) > thresh:
                     data[clus_lab][ACh_lab]['spiked'] = 1
-                    spiked = 1
-                # checks time of first spike number of spikes that occured (if any)
-                data[clus_lab][ACh_lab]['first_spike'] = []
-                data[clus_lab][ACh_lab]['spike_n'] = []
-                if spiked == 1:
-                    data[clus_lab][ACh_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
-                    data[clus_lab][ACh_lab]['spike_n'] = cf.spike_n(vm)
                 
             
         
@@ -432,7 +430,8 @@ def dpp_DA_modded(model_data,
                    HFI = False,
                    HFI_delay = 0,
                    dur_and_amp = True,
-                   spike = False):
+                   spike = False,
+                   mod_tar = 'all'):
     '''
     Provides clustered glutamatergic input to SPNs to generate the dendritic 
     plateau potential in the absence of modulation.
@@ -511,6 +510,12 @@ def dpp_DA_modded(model_data,
         for j, DA_t in enumerate(DA_info['DA']['target']):
             DA_targets['target'].append(DA_t)
             DA_targets['label'].append(DA_info['DA']['label'][j])
+        target_x = .5
+        
+        if mod_tar == 'all':
+            DA_targets['target'] = ['all']
+            DA_targets['label'] = ['all']
+            target_x = 'all'
         
         for j, DA_t in enumerate(DA_targets['target']): # for each cholinergic input target
             
@@ -551,7 +556,7 @@ def dpp_DA_modded(model_data,
                 data['HFI'] = arrangement
             
             # get cholinergic modulation class
-            modulation = modulate.set_DA(cell, mod_factors, [DA_t], target_x=.5, play=mech_scale, dt=h.dt)
+            modulation = modulate.set_DA(cell, mod_factors, [DA_t], target_x=target_x, play=mech_scale, dt=h.dt)
             
             # run simulation
             h.finitialize(-80)
@@ -577,19 +582,12 @@ def dpp_DA_modded(model_data,
                 
             # get spike-related data
             if spike:
-                spiked = 0
                 thresh = 0
                 # checks whether spike occured
                 data[clus_lab][DA_lab]['spiked'] = 0
                 if max(vm) > thresh:
                     data[clus_lab][DA_lab]['spiked'] = 1
-                    spiked = 1
-                # checks time of first spike number of spikes that occured (if any)
-                data[clus_lab][DA_lab]['first_spike'] = []
-                data[clus_lab][DA_lab]['spike_n'] = []
-                if spiked == 1:
-                    data[clus_lab][DA_lab]['first_spike'] = tm[next(i for i, x in enumerate(vm) if x > 0)]
-                    data[clus_lab][DA_lab]['spike_n'] = cf.spike_n(vm)
+                    
                 
             
         

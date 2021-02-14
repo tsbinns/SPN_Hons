@@ -310,7 +310,7 @@ class set_ACh():
         
         # gets targets for modulation
         if 'all' in self.target:
-            self.target = self.cell.allseclist
+            self.target = [str(x) for x in self.cell.allseclist]
         
         # performs modulation of cell
         self._set_modulation()
@@ -467,7 +467,7 @@ class set_DA():
         
         # gets targets for modulation
         if 'all' in self.target:
-            self.target = self.cell.allseclist
+            self.target = [str(x) for x in self.cell.allseclist]
         
         # performs modulation of cell
         self._set_modulation()
@@ -496,13 +496,13 @@ class set_DA():
         for mech in seg:
             if mech.name() in self.mod_dict:
                 mech.damod = 1
-                mech.max2 = self.mod_dict[mech.name()]
+                mech.maxMod = self.mod_dict[mech.name()]
                 if reset:
-                    mech.lev2 = 0
+                    mech.level = 0
                 if len(self.play) and mech.name() in self.play:
-                    self.play[mech.name()].play(mech._ref_lev2, self.dt)
+                    self.play[mech.name()].play(mech._ref_level, self.dt)
                 else:
-                    mech.lev2 = 1
+                    mech.level = 1
     
     
     def _mod_chan(self, seg, reset=False):
@@ -513,27 +513,27 @@ class set_DA():
             
             if 'gaba' in syn.hname() and 'GABA' in self.mod_dict:
                 syn.damod = 1
-                syn.max2 = self.mod_dict['GABA']
+                syn.maxMod = self.mod_dict['GABA']
                 if reset:
-                    syn.lev2 = 0
+                    syn.level = 0
                 elif len(self.play) and 'GABA' in self.play:
-                    self.play['GABA'].play(syn._ref_lev2, self.dt)
+                    self.play['GABA'].play(syn._ref_level, self.dt)
                 else:
-                    syn.lev2 = 1
+                    syn.level = 1
             
             elif 'glut' in syn.hname()and 'GLUT' in self.mod_dict:
                 syn.damod = 1
-                syn.max2NMDA = self.mod_dict['NMDA']
-                syn.max2AMPA = self.mod_dict['AMPA']
+                syn.maxModNMDA = self.mod_dict['NMDA']
+                syn.maxModAMPA = self.mod_dict['AMPA']
                 if reset:
-                    syn.l2AMPA = 0
-                    syn.l2NMDA = 0
+                    syn.l1AMPA = 0
+                    syn.l1NMDA = 0
                 elif len(self.play) and 'NMDA' in self.play() and 'AMPA' in self.play:
-                    self.play['NMDA'].play(syn._ref_l2NMDA, self.dt)
-                    self.play['AMPA'].play(syn._ref_l2AMPA, self.dt)
+                    self.play['NMDA'].play(syn._ref_l1NMDA, self.dt)
+                    self.play['AMPA'].play(syn._ref_l1AMPA, self.dt)
                 else:
-                    syn.l2AMPA = 1
-                    syn.l2NMDA = 1
+                    syn.l1AMPA = 1
+                    syn.l1NMDA = 1
                             
     
     def _reset_mod(self):
