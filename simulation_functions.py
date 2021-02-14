@@ -512,7 +512,7 @@ def dpp_DA_modded(model_data,
             DA_targets['target'].append(DA_t)
             DA_targets['label'].append(DA_info['DA']['label'][j])
         
-        for j, ACh_t in enumerate(DA_targets['target']): # for each cholinergic input target
+        for j, DA_t in enumerate(DA_targets['target']): # for each cholinergic input target
             
             DA_lab = DA_targets['label'][j]
             
